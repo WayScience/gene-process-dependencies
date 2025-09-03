@@ -57,8 +57,8 @@ dependency_df.head()
 scaler = MinMaxScaler()
 
 # Apply the scaler to the numeric columns
-dependency_df[dependency_df.select_dtypes(include=['float64', 'int']).columns] = scaler.fit_transform(
-    dependency_df.select_dtypes(include=['float64', 'int'])
+dependency_df[dependency_df.select_dtypes(include="number").columns] = scaler.fit_transform(
+    dependency_df.select_dtypes(include="number")
 )
 
 
