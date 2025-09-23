@@ -71,8 +71,8 @@ dependency_df[dependency_df.select_dtypes(include="number").columns] = scaler.fi
 train_and_test_subbed_dir = pathlib.Path("../0.data-download/data/train_and_test_subbed.parquet")
 train_and_test_subbed = pd.read_parquet(train_and_test_subbed_dir)
 
-train_and_test_subbed[train_and_test_subbed.select_dtypes(include=['float64', 'int']).columns] = scaler.fit_transform(
-    train_and_test_subbed.select_dtypes(include=['float64', 'int'])
+train_and_test_subbed[train_and_test_subbed.select_dtypes(include=["number"]).columns] = scaler.fit_transform(
+    train_and_test_subbed.select_dtypes(include=["number"])
 )
 
 # Convert DataFrame to NumPy and then Tensor
