@@ -14,6 +14,9 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, TensorDataset
 
+import seaborn as sns
+import matplotlib.pyplot as plt
+
 script_directory = pathlib.Path("../utils/").resolve()
 sys.path.insert(0, str(script_directory))
 from data_loader import load_model_data
@@ -139,9 +142,6 @@ print(recon_df)
 
 # In[8]:
 
-
-import seaborn as sns
-import matplotlib.pyplot as plt
 
 # Set global font sizes
 plt.rcParams.update({
