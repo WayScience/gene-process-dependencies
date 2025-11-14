@@ -107,7 +107,7 @@ output_dir = pathlib.Path("results")
 output_dir.mkdir(parents=True, exist_ok=True)
 
 
-# In[8]:
+# In[ ]:
 
 
 # Placeholder for storing all latent representations
@@ -163,7 +163,7 @@ else:
     combined_latent_df.to_parquet(cache_file)
 
 
-# In[9]:
+# In[8]:
 
 
 drug_dir = pathlib.Path("../5.drug-dependency/results/combined_latent_drug_correlations.parquet")
@@ -182,7 +182,7 @@ prism_df, prism_cell_df, prism_trt_df = load_utils.load_prism(
 )
 
 
-# In[10]:
+# In[9]:
 
 
 # Merge drug_df with prism_trt_df to replace drug IDs with drug names
@@ -198,7 +198,7 @@ drug_df = drug_df.drop(columns=['column_name'])
 drug_df.head()
 
 
-# In[ ]:
+# In[10]:
 
 
 # Define cut-offs
@@ -223,23 +223,42 @@ drug_max = assign_unique_latent_dims(significant_drug_df, score_col="pearson_cor
 # In[12]:
 
 
-# Loop through each unique ModelID to process and plot
+corum_merge_df = []
 for model_id in combined_latent_df['ModelID'].unique():
-    compute_and_plot_latent_scores(model_id, combined_latent_df, reactome_max, "reactome_pathway", "gsea_es_score", "Multi-Gene Dependency")
+    df = compute_and_plot_latent_scores(model_id, combined_latent_df, corum_max, "reactome_pathway", "gsea_es_score", "CORUM_01")
+    corum_merge_df.append(df)
 
 
 # In[13]:
 
 
-# Loop through each unique ModelID to process and plot
+pathway_merge_df = []
 for model_id in combined_latent_df['ModelID'].unique():
-    compute_and_plot_latent_scores(model_id, combined_latent_df, corum_max, "reactome_pathway", "gsea_es_score", "Multi-Gene Dependency")
+    df = compute_and_plot_latent_scores(model_id, combined_latent_df, reactome_max, "reactome_pathway", "gsea_es_score", "Reactome_01")
+    pathway_merge_df.append(df)
 
 
 # In[14]:
 
 
-# Loop through each unique ModelID to process and plot
+drug_merge_df = []
 for model_id in combined_latent_df['ModelID'].unique():
-    compute_and_plot_latent_scores(model_id, combined_latent_df, drug_max, "name", "pearson_correlation", "Drug")
+    df = compute_and_plot_latent_scores(model_id, combined_latent_df, drug_max, "name", "pearson_correlation", "Drug_01")
+    drug_merge_df.append(df)
+
+
+# In[15]:
+
+
+pathway_merge_df = pd.concat(pathway_merge_df, ignore_index=True)
+drug_merge_df = pd.concat(drug_merge_df, ignore_index=True)
+corum_merge_df = pd.concat(corum_merge_df, ignore_index=True)
+
+
+# In[16]:
+
+
+drug_merge_df.to_parquet("./results/all_drug_results.parquet")
+corum_merge_df.to_parquet("./results/all_corum_results.parquet")
+pathway_merge_df.to_parquet("./results/all_reactome_results.parquet")
 
