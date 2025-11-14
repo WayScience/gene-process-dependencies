@@ -250,15 +250,15 @@ for model_id in combined_latent_df['ModelID'].unique():
 # In[15]:
 
 
-pathway_merge_df = pd.concat(pathway_merge_df, ignore_index=True)
-drug_merge_df = pd.concat(drug_merge_df, ignore_index=True)
-corum_merge_df = pd.concat(corum_merge_df, ignore_index=True)
+pathway_final = pd.concat(pathway_merge_df, ignore_index=True)
+drug_final = pd.concat(drug_merge_df, ignore_index=True)
+corum_final = pd.concat(corum_merge_df, ignore_index=True)
 
 
 # In[16]:
 
 
-drug_merge_df.to_parquet("./results/all_drug_results.parquet")
-corum_merge_df.to_parquet("./results/all_corum_results.parquet")
-pathway_merge_df.to_parquet("./results/all_reactome_results.parquet")
+drug_final.to_parquet("./results/all_drug_results.parquet")
+corum_final.to_parquet("./results/all_corum_results.parquet")
+pathway_final.to_parquet("./results/all_reactome_results.parquet")
 

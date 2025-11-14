@@ -36,52 +36,92 @@ model_colors = {
 
 # In[3]:
 
-
-def truncate_label(label, max_chars_per_line=22, max_total_words=4, max_lines=2):
+def clean_label(x: str) -> str:
     """
-    Truncate a label to at most `max_total_words` words and `max_lines` lines,
-    inserting line breaks so no line exceeds `max_chars_per_line` characters.
+    Clean or override specific long labels before truncation.
+    """
+    # Polymerase switching
+    if "Polymerase Switching" in x:
+        return "Polymerase Switching"
+
+    # Negative MET regulation
+    if "Negative Regulation Of MET" in x or "Negative Regulation of MET" in x:
+        return "Negative MET Regulation"
+
+    return truncate_label(x)
+
+
+def truncate_label(
+    label: str,
+    max_chars_per_line: int = 22,
+    max_total_words: int = 4,
+    max_lines: int = 2
+) -> str:
+    """
+    Truncate a label according to character and line limits.
     """
     words = label.split()
     short = " ".join(words[:max_total_words])
     
-    # Wrap into lines
+    # Wrap
     lines = textwrap.wrap(short, width=max_chars_per_line)
     
-    # Enforce the max number of lines
+    # clamp to max lines
     if len(lines) > max_lines:
         lines = lines[:max_lines]
-    
+
     wrapped = "\n".join(lines)
-    
-    # Add ellipsis if truncated (either by word or by line)
-    if len(words) > max_total_words or len(lines) >= max_lines and len(lines) < len(textwrap.wrap(short, width=max_chars_per_line)):
+
+    # Determine if truncated
+    if (
+        len(words) > max_total_words or 
+        (len(lines) >= max_lines and len(lines) < len(textwrap.wrap(short, width=max_chars_per_line)))
+    ):
         wrapped += "..."
         
     return wrapped
-    
-def place_labels_polar(ax, angles, labels, radius):
+
+
+def place_labels_polar(
+    ax: matplotlib.axes.Axes,
+    angles: List[float],
+    labels: List[str],
+    radius: float
+) -> None:
     """
-    Place labels on a polar axis just outside the circle,
-    slightly adjust vertical placement for top/bottom wedges.
+    Place labels around a polar plot at a given radius.
     """
     for angle, label in zip(angles[:-1], labels):
         r = radius
 
-        # left/right alignment
+        # left / right alignment
         if 0 <= angle <= np.pi/2 or 3*np.pi/2 <= angle <= 2*np.pi:
             ha = 'left'
         else:
             ha = 'right'
 
-        ax.text(angle, r, label, fontsize=9, color='black',
-                ha=ha, va='center', wrap=True)
+        ax.text(
+            angle, r, label,
+            fontsize=9,
+            color='black',
+            ha=ha,
+            va='center',
+            wrap=True
+        )
+
+    return None
 
 
-def make_radar(ax, df, feature_col, title, global_max):
+def make_radar(
+    ax: matplotlib.axes.Axes,
+    df: pd.DataFrame,
+    feature_col: str,
+    title: str,
+    global_max: float,
+    num_circles: int = 5
+) -> None:
     """
-    Draw one radar plot onto given axis (ax).
-    
+    Draw a radar plot on an existing polar matplotlib axis.
     """
     df = df[df["ModelID"].isin(model_ids)].copy()
 
@@ -93,18 +133,32 @@ def make_radar(ax, df, feature_col, title, global_max):
     )
     top_features = top_by_model[feature_col].drop_duplicates().tolist()
     n_vars = len(top_features)
-    labels = [truncate_label(x) for x in top_features]
+    labels = [clean_label(x) for x in top_features]
 
     # Angles
     angles = np.linspace(0, 2 * np.pi, n_vars, endpoint=False).tolist()
     angles += [angles[0]]
 
+    # Reference circles
+    circle_levels = np.linspace(0, global_max, num_circles + 1)[1:]
+    for r in circle_levels:
+        circle_vals = [r] * (n_vars + 1)
+        ax.plot(
+            angles, circle_vals,
+            color="grey", linestyle="--",
+            linewidth=1, zorder=0
+        )
+
     # Plot each model
     for mid in model_ids:
         subset = df[df["ModelID"] == mid]
+
         merged = pd.DataFrame({feature_col: top_features}).merge(
-            subset[[feature_col, score_col]], on=feature_col, how="left"
+            subset[[feature_col, score_col]],
+            on=feature_col,
+            how="left"
         )
+
         values = merged[score_col].fillna(0).tolist()
         values += [values[0]]
 
@@ -113,18 +167,20 @@ def make_radar(ax, df, feature_col, title, global_max):
         ax.scatter(angles, values, color=model_colors[mid],
                    s=30, edgecolor="black", zorder=5)
 
-    # Axis + grid styling
-    ax.set_ylim(0, global_max * 1.05)
+    # Axis styling
+    ax.set_ylim(0, global_max * 1.25)
     ax.set_xticks([])
     ax.set_yticks([])
-    ax.grid(True, color="gray", alpha=0.6)
     ax.set_aspect("equal")
 
-    ax.set_ylim(0, global_max * 1.25)
+    # Labels
     label_radius = global_max * 1.4
     place_labels_polar(ax, angles, labels, label_radius)
+
     # Title
-    ax.set_title(title, fontsize=18, pad=30, fontweight="bold")
+    ax.set_title(title, fontsize=18, pad=30, fontweight="bold", y=1)
+
+    return None
 
 
 # In[4]:
