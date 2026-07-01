@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[1]:
+# In[ ]:
 
 
 import pandas as pd
@@ -9,10 +9,42 @@ import pathlib
 import sys
 import joblib
 import numpy as np
+import plotly.graph_objects as go
+import plotly.express as px
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+import random
+import colorsys
+
 
 script_directory = pathlib.Path("../utils/").resolve()
 sys.path.insert(0, str(script_directory))
 from data_loader import load_model_data, load_train_test_data
+
+
+# In[ ]:
+
+
+def generate_random_palette(num_colors, seed=12):
+    # Generate random colors with varied lightness and saturation
+    random.seed(seed)
+    
+    colors = []
+    
+    for _ in range(num_colors):
+        h = random.random()  # Random hue between 0 and 1
+        l = random.uniform(0.2, 0.8)  # Lightness between 0.3 and 0.9 for contrast
+        s = random.uniform(0.5, 1.0)  # Saturation between 0.6 and 1.0 for vivid colors
+        color = colorsys.hls_to_rgb(h, l, s)  # Convert HLS to RGB color
+        colors.append(color)
+    
+    return colors
+
+
+# In[ ]:
+
+
+
 
 
 # In[2]:
@@ -68,35 +100,8 @@ features = combined_df[gene_cols]
 features
 
 
-# In[9]:
+# In[ ]:
 
-
-import random
-import colorsys
-
-def generate_random_palette(num_colors, seed=12):
-    # Generate random colors with varied lightness and saturation
-    random.seed(seed)
-    
-    colors = []
-    
-    for _ in range(num_colors):
-        h = random.random()  # Random hue between 0 and 1
-        l = random.uniform(0.2, 0.8)  # Lightness between 0.3 and 0.9 for contrast
-        s = random.uniform(0.5, 1.0)  # Saturation between 0.6 and 1.0 for vivid colors
-        color = colorsys.hls_to_rgb(h, l, s)  # Convert HLS to RGB color
-        colors.append(color)
-    
-    return colors
-
-
-# In[10]:
-
-
-import plotly.graph_objects as go
-import plotly.express as px
-from sklearn.decomposition import PCA
-from sklearn.preprocessing import StandardScaler
 
 # Prepare PCA input (excluding non-numeric columns)
 pca_input = combined_df[gene_cols].apply(pd.to_numeric, errors="coerce")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-# In[12]:
+# In[1]:
 
 
 import pandas as pd
@@ -15,73 +15,7 @@ import random
 import colorsys
 
 
-# In[13]:
-
-
-cancer_type_input_file = pathlib.Path("../0.data-download/data/Model.parquet")
-cancer_type_df = pd.read_parquet(cancer_type_input_file)
-
-reactome_dims = pathlib.Path("../5.drug-dependency/results/all_reactome_results.parquet")
-reactome_df = pd.read_parquet(reactome_dims)
-
-corum_dims = pathlib.Path("../5.drug-dependency/results/all_corum_results.parquet")
-corum_df = pd.read_parquet(corum_dims)
-
-drug_dims = pathlib.Path("../5.drug-dependency/results/all_drug_results.parquet")
-drug_df = pd.read_parquet(drug_dims)
-
-
-# In[14]:
-
-
-reactome_df.head()
-
-
-# In[15]:
-
-
-# Step 2: Subset based on matching keys
-subset_keys = ["model", "latent_dim_total", "init", "z"]
-
-# Replace latent identifiers with pathway
-reactome_df["feature"] = reactome_df["reactome_pathway"]
-reactome_df = reactome_df.drop(columns=["model", "latent_dim_total", "init", "seed", "z", "reactome_pathway"])
-
-corum_df["feature"] = corum_df["reactome_pathway"]
-corum_df = corum_df.drop(columns=["model", "latent_dim_total", "init", "seed", "z", "reactome_pathway"])
-
-drug_df["feature"] = drug_df["name"]
-drug_df = drug_df.drop(columns=["model", "latent_dim_total", "init", "seed", "z", "name"])
-
-
-# In[16]:
-
-
-drug_df_sorted = drug_df.sort_values(by=["OncotreePrimaryDisease", "ModelID", "feature"], ascending=True)
-drug_df_sorted.head()
-
-
-# In[17]:
-
-
-# Create a unique column name by combining feature and source
-meta_cols = ["ModelID", "OncotreePrimaryDisease"]
-reactome_meta = reactome_df[meta_cols].drop_duplicates()
-corum_meta = corum_df[meta_cols].drop_duplicates()
-drug_meta = drug_df[meta_cols].drop_duplicates()
-
-# Pivot to wide format
-reactome_matrix = reactome_df.pivot(index="ModelID", columns="feature", values="latent_score")
-corum_matrix = corum_df.pivot(index="ModelID", columns="feature", values="latent_score")
-drug_matrix = drug_df.pivot(index="ModelID", columns="feature", values="latent_score")
-
-# Join metadata back to each matrix
-reactome_matrix = reactome_matrix.merge(reactome_meta, on="ModelID", how="left")
-corum_matrix = corum_matrix.merge(corum_meta, on="ModelID", how="left")
-drug_matrix = drug_matrix.merge(drug_meta, on="ModelID", how="left")
-
-
-# In[18]:
+# In[ ]:
 
 
 def generate_random_palette(num_colors, seed=12):
@@ -100,7 +34,7 @@ def generate_random_palette(num_colors, seed=12):
     return colors
 
 
-# In[19]:
+# In[ ]:
 
 
 def make_dropdown_pca_with_selection(df, title="PCA Interactive Plot"):
@@ -193,7 +127,108 @@ def make_dropdown_pca_with_selection(df, title="PCA Interactive Plot"):
     return fig, out  # Return both the figure and the output widget for selection
 
 
-# In[20]:
+# In[2]:
+
+
+cancer_type_input_file = pathlib.Path("../0.data-download/data/Model.parquet")
+cancer_type_df = pd.read_parquet(cancer_type_input_file)
+
+reactome_dims = pathlib.Path("../5.drug-dependency/results/all_reactome_results.parquet")
+reactome_df = pd.read_parquet(reactome_dims)
+
+corum_dims = pathlib.Path("../5.drug-dependency/results/all_corum_results.parquet")
+corum_df = pd.read_parquet(corum_dims)
+
+drug_dims = pathlib.Path("../5.drug-dependency/results/all_drug_results.parquet")
+drug_df = pd.read_parquet(drug_dims)
+
+
+# In[3]:
+
+
+reactome_df.head()
+
+
+# In[4]:
+
+
+# Step 2: Subset based on matching keys
+subset_keys = ["model", "latent_dim_total", "init", "z"]
+
+# Replace latent identifiers with pathway
+reactome_df["feature"] = reactome_df["reactome_pathway"]
+reactome_df = reactome_df.drop(columns=["model", "latent_dim_total", "init", "seed", "z", "reactome_pathway"])
+
+corum_df["feature"] = corum_df["reactome_pathway"]
+corum_df = corum_df.drop(columns=["model", "latent_dim_total", "init", "seed", "z", "reactome_pathway"])
+
+drug_df["feature"] = drug_df["name"]
+drug_df = drug_df.drop(columns=["model", "latent_dim_total", "init", "seed", "z", "name"])
+
+
+# In[5]:
+
+
+drug_df_sorted = drug_df.sort_values(by=["OncotreePrimaryDisease", "ModelID", "feature"], ascending=True)
+drug_df_sorted.head()
+
+
+# In[ ]:
+
+
+# Create a unique column name by combining feature and source
+meta_cols = ["ModelID", "OncotreePrimaryDisease"]
+reactome_meta = reactome_df[meta_cols].drop_duplicates()
+corum_meta = corum_df[meta_cols].drop_duplicates()
+drug_meta = drug_df[meta_cols].drop_duplicates()
+
+# Pivot to wide format
+reactome_matrix = reactome_df.pivot(index="ModelID", columns="feature", values="latent_score")
+corum_matrix = corum_df.pivot(index="ModelID", columns="feature", values="latent_score")
+drug_matrix = drug_df.pivot(index="ModelID", columns="feature", values="latent_score")
+display(corum_matrix.isna().sum().sum())
+
+# Join metadata back to each matrix
+reactome_matrix = reactome_matrix.merge(reactome_meta, on="ModelID", how="left")
+corum_matrix = corum_matrix.merge(corum_meta, on="ModelID", how="left")
+drug_matrix = drug_matrix.merge(drug_meta, on="ModelID", how="left")
+
+
+# In[12]:
+
+
+all_pairs = pd.MultiIndex.from_product(
+    [
+        corum_df["ModelID"].unique(),
+        corum_df["feature"].unique()
+    ],
+    names=["ModelID", "feature"]
+)
+
+observed_pairs = pd.MultiIndex.from_frame(
+    corum_df[["ModelID", "feature"]]
+)
+
+missing = all_pairs.difference(observed_pairs)
+
+print(len(missing))
+missing[:10]
+
+
+# In[7]:
+
+
+print("Pathway rows with NA latent scores:")
+display(reactome_df[reactome_df["latent_score"].isna()])
+
+print("Drug rows with NA latent scores:")
+display(drug_df[drug_df["latent_score"].isna()])
+
+print("CORUM rows with NA latent scores:")
+display(corum_df[corum_df["latent_score"].isna()])
+
+
+# In[10]:
 
 
 # Assuming combined_df is your full dataset
