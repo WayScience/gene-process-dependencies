@@ -71,6 +71,8 @@ disease_counts <- model_df %>%
     dplyr::filter(OncotreePrimaryDisease != "Non-Cancerous") %>%
     dplyr::count(OncotreePrimaryDisease, sort = TRUE)
 
+print(paste("Total unique cancer types:", nrow(disease_counts)))
+
 top_diseases <- disease_counts$OncotreePrimaryDisease[seq_len(n_top)]
 
 lineage_counts <- model_df %>%
@@ -158,11 +160,13 @@ age_distrib_gg = (
     + geom_histogram()
     + geom_vline(xintercept = 18, linetype = "dashed", color = "red")
     + annotate(
-        "text",
-        x = 2, y = 78,
+        "label",
+        x = 0.5, y = 78,
         label = paste0("Number with\nunknown age:\n", n_unknown_age),
         hjust = 0, vjust = 1,
-        size = 3
+        size = 3,
+        fill = "white",
+        label.size = 0
     )
     + theme_bw()
     + theme(
