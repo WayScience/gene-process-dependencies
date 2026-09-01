@@ -12,7 +12,7 @@ This project is described in our preprint, [Curd & Way (2025), "Characterizing t
 
 ![Overview of the BioBombe framework.](figure1_overview.jpg)
 
-**Figure 1. Overview of the BioBombe framework.** (A) Six dimensionality-reduction algorithms (PCA, ICA, NMF, VAE, βVAE, βTCVAE) are each fit to DepMap Achilles CRISPR dependency data across a range of latent dimensions (k = 2–200), producing a weight matrix and a latent dataframe for every model/dimension combination. (B) We evaluate each fit by reconstruction error, gene set coverage, and stability across dimensions. (C) We interpret weight matrices via GSEA against Reactome pathways and CORUM complexes. We correlate latent dataframes with PRISM drug screen sensitivity to generate drug predictions.
+> **Figure 1. Overview of the BioBombe framework.** (A) Six dimensionality-reduction algorithms (PCA, ICA, NMF, VAE, βVAE, βTCVAE) are each fit to DepMap Achilles CRISPR dependency data across a range of latent dimensions (k = 2–200), producing a weight matrix and a latent dataframe for every model/dimension combination. (B) We evaluate each fit by reconstruction error, gene set coverage, and stability across dimensions. (C) We interpret weight matrices via GSEA against Reactome pathways and CORUM complexes. We correlate latent dataframes with PRISM drug screen sensitivity to generate drug predictions.
 
 Most precision oncology matches a drug to a single mutated gene, which only helps a minority of patients and runs into off-target effects.
 Instead, we look for gene process dependencies: groups of genes within a shared biological process that cancer cells rely on to survive. 
