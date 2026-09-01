@@ -1,0 +1,30 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "Gene Dependency Representations"
+type: software
+url: "https://github.com/gwaybio/gene_dependency_representations"
+repository-code: "https://github.com/gwaybio/gene_dependency_representations"
+license: BSD-3-Clause
+authors:
+  - given-names: Mark
+    family-names: Woodnorth
+  - given-names: Julia
+    family-names: Curd
+  - given-names: Ethan
+    family-names: Cohen
+  - given-names: Gregory
+    family-names: Way
+  - given-names: Rose
+    family-names: Doss
+preferred-citation:
+  type: article
+  title: "Characterizing the landscape of gene process dependencies in cancer"
+  authors:
+    - given-names: "Julia B."
+      family-names: Curd
+    - given-names: "Gregory P."
+      family-names: Way
+  year: 2025
+  journal: bioRxiv
+  doi: "10.1101/2025.11.14.688518"
+  url: "https://www.biorxiv.org/content/10.1101/2025.11.14.688518v1"
