@@ -23,7 +23,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 script_directory = pathlib.Path("./scripts")
 sys.path.insert(0, str(script_directory))
-from utils import save_model, set_random_seed
+from model_io_utils import save_model, set_random_seed
 
 script_directory = pathlib.Path("../2.prototype-VAE-models/utils/").resolve()
 sys.path.insert(0, str(script_directory))
