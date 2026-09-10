@@ -7,11 +7,11 @@ This DepMap release contains data from in vitro studies of genetic dependencies 
 Data resource:
 https://depmap.org/portal/download/all/
 
-The 24Q2 release notes are described here: https://forum.depmap.org/t/announcing-the-24q2-release/3312
+The 24Q2 release notes are described here: https://forum.depmap.org/t/announcing-the-24q2-release/3312.
 
 ## Files used in our multivariate gene dependency project
 
-See the following resource for more information: https://forum.depmap.org/t/depmap-genetic-dependencies-faq/131
+See the following resource for more information: https://forum.depmap.org/t/depmap-genetic-dependencies-faq/131.
 
 ### CRISPRGeneEffect.parquet
 
@@ -39,5 +39,11 @@ Rows (1,150): the ModelID
 
 This file gives details on the cell lines, type of cancer, sex, age, and unique IDs of the patient.
 
-Columns (30): description of cancer, and patient's biological and ID information
+Columns (43): description of cancer, and patient's biological and ID information
 Rows (1,960): the ModelID
+
+## Constructing the gene filtering dictionary
+
+Gene dependency file columns are formatted as `"gene symbol (entrez id)"`.
+`2.construct_gene_dictionary.ipynb` splits `CRISPRGeneEffect.parquet` column names into a six-column dictionary (`entrez_id`, `symbol_id`, the original `dependency_column`, two per-source QC pass/fail flags, and a QC summary column), using QC calls from `depmap_gene_meta.tsv` (see Pan et al. 2022). 
+The result is written to `CRISPR_gene_dictionary.parquet`.
