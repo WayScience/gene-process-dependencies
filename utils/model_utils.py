@@ -3,13 +3,13 @@ import sys
 import numpy as np
 import pandas as pd
 
-script_directory = pathlib.Path("../2.train-VAE/utils/").resolve()
+script_directory = pathlib.Path("../2.prototype-VAE-models/utils/").resolve()
 sys.path.insert(0, str(script_directory))
 from betatcvae import tc_extract_latent_dimensions
 from betavae import extract_latent_dimensions
 from vanillavae import vvae_extract_latent_dimensions
 
-script_directory = pathlib.Path("../2.train-VAE/utils/").resolve()
+script_directory = pathlib.Path("../2.prototype-VAE-models/utils/").resolve()
 sys.path.insert(0, str(script_directory))
 from betavae import weights
 from betatcvae import tc_weights
