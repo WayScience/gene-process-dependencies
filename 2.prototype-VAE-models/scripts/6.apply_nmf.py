@@ -6,6 +6,8 @@
 # Non-negative Matrix Factorization (NMF) is a dimensionality reduction technique that factors a non-negative matrix into two non-negative matrices. This is particularly useful when the data is inherently non-negative.
 # 
 # We apply it to GeneEffect scores here and save latent representations (NMF components) for downstream comparative analyses (to compare with BetaVAE).
+#
+# Run this script with `2.prototype-VAE-models/` as the working directory — its relative paths (`../utils/`, `../0.data-download/data`, `results/`) only resolve correctly from there.
 
 # In[1]:
 

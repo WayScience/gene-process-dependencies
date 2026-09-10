@@ -1,6 +1,8 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+# Run this script with `2.prototype-VAE-models/` as the working directory — its relative paths (`../2.prototype-VAE-models/utils/`, `../utils/`) only resolve correctly from there.
+
 # In[1]:
 
 

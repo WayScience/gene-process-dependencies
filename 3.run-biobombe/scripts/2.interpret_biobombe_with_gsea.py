@@ -135,8 +135,9 @@ for model_file in model_save_dir.glob("*.joblib"):
         continue
     # Check if this model, latent dimension, and initialization have already been processed
     if not combined_results_df.empty:
-        if ((combined_results_df['model'] == model_name) & 
+        if ((combined_results_df['model'] == model_name) &
             (combined_results_df['init'] == init) &
+            (combined_results_df['modelseed'] == seed) &
             (combined_results_df['full_model_z'] == num_components)).any():
             print(f"Skipping {model_name} init {init} with {num_components} dimensions as it is already processed.")
             continue

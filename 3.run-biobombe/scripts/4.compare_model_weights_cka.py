@@ -290,6 +290,7 @@ plt.legend(title="Model Name")
 
 # save the figure
 init_save_path = pathlib.Path("./figures/initializations.png")
+init_save_path.parent.mkdir(parents=True, exist_ok=True)
 plt.savefig(init_save_path, bbox_inches="tight", dpi=600)
 
 

@@ -15,7 +15,7 @@ suppressPackageStartupMessages(library(cowplot))
 
 # Set file paths
 training_file <- file.path("..", "results", "training_history.csv")
-tc_training_file <- file.path("..", "results", "training_history_tc.csv")
+tc_training_file <- file.path("..", "results", "tc_training_history.csv")
 output_file <- file.path("figures", "optimal_beta_vae_training_curves.png")
 tc_output_file <- file.path("figures", "optimal_beta_tc_vae_training_curves.png")
 
@@ -101,7 +101,7 @@ tc_full_gg <- (
         values = curve_colors
     )
     + xlab(xlab_)
-    + ylab("BetaVAE Loss value\n(Reconstruction + BetaKL)")
+    + ylab("Beta-TCVAE Loss value")
 )
 
 tc_full_gg

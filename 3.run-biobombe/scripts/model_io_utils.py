@@ -27,16 +27,11 @@ def save_model(trial, model, directory, modelname, latent_dims, init, seed):
     trial_number = trial.number if hasattr(trial, "number") else "non-optuna"
 
     # Define the model save path
-    model_save_path = directory / f"{modelname}_latent_dims_{latent_dims}_trial_{trial_number}_init_{init}_seed_{seed}.pt"
-    
-    # Save the model - assuming the model has a 'state_dict' attribute
-    if hasattr(model, "state_dict"):
-        import torch
-        torch.save(model.state_dict(), model_save_path)
-    else:
-        import pickle
-        with open(model_save_path, "wb") as f:
-            pickle.dump(model, f)
+    model_save_path = directory / f"{modelname}_latent_dims_{latent_dims}_trial_{trial_number}_init_{init}_seed_{seed}.joblib"
+
+    # Save the whole model object (not just a state_dict) so consumers can
+    # joblib.load() it and call encode()/extract_weights() directly
+    joblib.dump(model, model_save_path)
 
 
 def set_random_seed(seed):

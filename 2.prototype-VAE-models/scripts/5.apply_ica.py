@@ -6,7 +6,9 @@
 # Independent Component Analysis (ICA) is a dimensionality reduction method that separates a multivariate signal into additive, independent components.
 # 
 # We apply it to GeneEffect scores here and save latent representations (ICA components) for downstream comparative analyses (to compare with BetaVAE).
-# 
+#
+# Run this script with `2.prototype-VAE-models/` as the working directory — its relative paths (`../utils/`, `../0.data-download/data`, `results/`) only resolve correctly from there.
+#
 
 # In[1]:
 

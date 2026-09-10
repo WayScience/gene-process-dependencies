@@ -128,10 +128,10 @@ def objective_vvae(trial, train_tensor, val_tensor, train_df, latent_dim=None):
         "learning_rate", args.min_lr, args.max_lr
     )
     batch_size = trial.suggest_int(
-        "batch_size", args.min_batch_size, args.max_batch_size
+        "batch_size", args.min_batch_size, args.max_batch_size, step=args.batch_size_step
     )
     epochs = trial.suggest_int(
-        "epochs", args.min_epochs, args.max_epochs
+        "epochs", args.min_epochs, args.max_epochs, step=args.epoch_step
     )
     optimizer_type = trial.suggest_categorical(
         "optimizer_type", ["adam", "rmsprop"]

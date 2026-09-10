@@ -22,7 +22,7 @@ drug_results_df <- arrow::read_parquet(
     results_file,
 )
 
-glioma_file <- file.path(data_dir, "diffuse_glioma.parquet")
+glioma_file <- file.path(data_dir, "Diffuse_Glioma_Analysis.parquet")
 glioma_df <- arrow::read_parquet(
     glioma_file,
 )

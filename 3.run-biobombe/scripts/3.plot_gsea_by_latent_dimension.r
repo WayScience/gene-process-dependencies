@@ -14,7 +14,7 @@ suppressPackageStartupMessages(library(reticulate))
 
 
 #Load data
-data_dir <- file.path("../3.run-biobombe/results")
+data_dir <- file.path("../3.run-biobombe/gsea_results")
 
 results_file <- file.path(data_dir, "combined_z_matrix_gsea_results.parquet")
 gsea_results_df <- arrow::read_parquet(
