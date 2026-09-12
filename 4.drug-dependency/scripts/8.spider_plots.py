@@ -211,7 +211,7 @@ fig.legend(handles, labels, loc='lower center', ncol=3,
            fontsize=12, frameon=False, bbox_to_anchor=(0.5, -.05))
 
 plt.tight_layout(rect=[0, 0, 1, 0.95])
-plt.savefig("combined_radar_plots.png", dpi=600,
+plt.savefig("visualize/combined_radar_plots.png", dpi=600,
             bbox_inches="tight", transparent=True)
 plt.show()
 
