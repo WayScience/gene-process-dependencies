@@ -26,7 +26,7 @@ from data_loader import load_model_data
 
 
 data_directory = pathlib.Path("../0.data-download/data").resolve()
-dependency_file = pathlib.Path(f"{data_directory}/CRISPRGeneEffect.parquet").resolve()
+dependency_file = pathlib.Path(f"{data_directory}/CRISPRGeneEffect.csv").resolve()
 gene_dict_file = pathlib.Path(f"{data_directory}/CRISPR_gene_dictionary.parquet").resolve()
 
 

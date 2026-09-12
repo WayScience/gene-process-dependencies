@@ -39,8 +39,8 @@ prism_df.head(3)
 
 #Load Model data
 data_dir = pathlib.Path("../0.data-download/data")
-model_input_file = pathlib.Path(f"{data_dir}/Model.parquet")
-model_df = pd.read_parquet(model_input_file)
+model_input_file = pathlib.Path(f"{data_dir}/Model.csv")
+model_df = pd.read_csv(model_input_file)
 
 print(model_df.shape)
 model_df.head(3)

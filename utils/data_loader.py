@@ -26,12 +26,12 @@ def load_data(data_directory, adult_or_pediatric="all", id_column="ModelID"):
     """
     # Define data paths
     data_directory = "../0.data-download/data/"
-    model_file = pathlib.Path(data_directory, "Model.parquet")
-    effect_data_file = pathlib.Path(data_directory, "CRISPRGeneEffect.parquet")
+    model_file = pathlib.Path(data_directory, "Model.csv")
+    effect_data_file = pathlib.Path(data_directory, "CRISPRGeneEffect.csv")
 
     # Load data
-    model_df = pd.read_parquet(model_file)
-    effect_df = pd.read_parquet(effect_data_file).dropna(axis=1)
+    model_df = pd.read_csv(model_file)
+    effect_df = pd.read_csv(effect_data_file).dropna(axis=1)
 
     # Rearrange model info and gene effect dataframe indices
     model_df = model_df.sort_index(ascending=True).reset_index()
@@ -143,15 +143,15 @@ def load_model_data(dependency_file, gene_dict_file):
     Load and preprocess gene dependency data and gene dictionary.
 
     Parameters:
-    - dependency_file (str): Path to the gene dependency data file.
-    - gene_dict_file (str): Path to the gene dictionary file.
+    - dependency_file (str): Path to the gene dependency data CSV.
+    - gene_dict_file (str): Path to the gene dictionary parquet file.
 
     Returns:
     - dependency_df (DataFrame): Preprocessed gene dependency data.
     - gene_dict_df (DataFrame): Preprocessed gene dictionary.
     """
     # Load gene dependency data
-    dependency_df = pd.read_parquet(dependency_file)
+    dependency_df = pd.read_csv(dependency_file)
 
     print(dependency_df.shape)
     dependency_df.head(3)

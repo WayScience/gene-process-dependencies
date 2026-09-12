@@ -95,7 +95,7 @@ train_df, test_df, val_df, load_gene_stats = load_train_test_data(
 )
 train_data = pd.DataFrame(train_df)
 
-dependency_file = pathlib.Path(f"{data_directory}/CRISPRGeneEffect.parquet").resolve()
+dependency_file = pathlib.Path(f"{data_directory}/CRISPRGeneEffect.csv").resolve()
 gene_dict_file = pathlib.Path(f"{data_directory}/CRISPR_gene_dictionary.parquet").resolve()
 dependency_df, gene_dict_df= load_model_data(dependency_file, gene_dict_file)
 gene_dict_df = pd.DataFrame(gene_dict_df)

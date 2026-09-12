@@ -130,8 +130,8 @@ def make_dropdown_pca_with_selection(df, title="PCA Interactive Plot"):
 # In[2]:
 
 
-cancer_type_input_file = pathlib.Path("../0.data-download/data/Model.parquet")
-cancer_type_df = pd.read_parquet(cancer_type_input_file)
+cancer_type_input_file = pathlib.Path("../0.data-download/data/Model.csv")
+cancer_type_df = pd.read_csv(cancer_type_input_file)
 
 reactome_dims = pathlib.Path("../4.drug-dependency/results/all_reactome_results.parquet")
 reactome_df = pd.read_parquet(reactome_dims)

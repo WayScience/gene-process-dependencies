@@ -28,6 +28,7 @@ dependencies:
   - conda-forge::plotly
   - conda-forge::pyarrow
   - conda-forge::lxml
+  - conda-forge::umap-learn
 
   - pip:
       - blitzgsea==1.3.33

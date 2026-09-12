@@ -5,6 +5,9 @@ __pycache__
 2.prototype-VAE-models/parameter_sweep
 .DS_Store
 3.run-biobombe/saved_models/
+8.apply-biobombe-new-data/data/*
+!8.apply-biobombe-new-data/data/.gitkeep
+8.apply-biobombe-new-data/visualize/pinwheels/
 .venv
 *.egg-info
 .ruff_cache

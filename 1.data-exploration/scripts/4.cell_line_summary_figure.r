@@ -1,31 +1,29 @@
 suppressPackageStartupMessages(library(dplyr))
 suppressPackageStartupMessages(library(ggplot2))
 suppressPackageStartupMessages(library(cowplot))
-suppressPackageStartupMessages(library(arrow))
+suppressPackageStartupMessages(library(readr))
 
 # Set i/o paths and files
 data_dir <- file.path("../0.data-download/data")
 fig_dir <- file.path("figures")
 
-model_input_file <- file.path(data_dir, "Model.parquet")
-crispr_input_file <- file.path(data_dir, "CRISPRGeneEffect.parquet")
+model_input_file <- file.path(data_dir, "Model.csv")
+crispr_input_file <- file.path(data_dir, "CRISPRGeneEffect.csv")
 
 figure_output_file <- file.path(fig_dir, "cancer_type_age_and_ped_model_distributions.png")
 
 # Set figure sizes
 text_size = 9
 
-# Load arrow package
-library(arrow)
-
-# Process dataset using arrow
-model_df <- arrow::read_parquet(
+# Model.csv / CRISPRGeneEffect.csv are kept as the CSV DepMap actually serves
+# them as, rather than converted to parquet, so read with readr, not arrow.
+model_df <- readr::read_csv(
     model_input_file
 )
 
 print(dim(model_df))
 
-crispr_df <- arrow::read_parquet(
+crispr_df <- readr::read_csv(
     crispr_input_file
 )
 

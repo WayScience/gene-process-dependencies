@@ -52,7 +52,7 @@ def generate_random_palette(num_colors, seed=12):
 
 # Load dependency data
 data_directory = pathlib.Path("../0.data-download/data").resolve()
-dependency_file = pathlib.Path(f"{data_directory}/CRISPRGeneEffect.parquet").resolve()
+dependency_file = pathlib.Path(f"{data_directory}/CRISPRGeneEffect.csv").resolve()
 gene_dict_file = pathlib.Path(f"{data_directory}/CRISPR_gene_dictionary.parquet").resolve()
 dependency_df, gene_dict_df= load_model_data(dependency_file, gene_dict_file)
 dependency_df = dependency_df.set_index("ModelID")
@@ -61,8 +61,8 @@ dependency_df = dependency_df.set_index("ModelID")
 # In[3]:
 
 
-cancer_type_input_file = pathlib.Path("../0.data-download/data/Model.parquet")
-cancer_type_df = pd.read_parquet(cancer_type_input_file)
+cancer_type_input_file = pathlib.Path("../0.data-download/data/Model.csv")
+cancer_type_df = pd.read_csv(cancer_type_input_file)
 
 
 # In[4]:

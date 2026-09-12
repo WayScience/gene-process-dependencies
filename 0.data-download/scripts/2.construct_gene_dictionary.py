@@ -39,17 +39,17 @@ import pandas as pd
 
 base_dir = "data/"
 
-dependency_file = pathlib.Path(f"{base_dir}/CRISPRGeneEffect.parquet")
+dependency_file = pathlib.Path(f"{base_dir}/CRISPRGeneEffect.csv")
 qc_gene_file = pathlib.Path(f"{base_dir}/depmap_gene_meta.tsv")
 
-output_gene_dict_file = pathlib.Path(f"{base_dir}/CRISPR_gene_dictionary.tsv")
+output_gene_dict_file = pathlib.Path(f"{base_dir}/CRISPR_gene_dictionary.parquet")
 
 
 # In[3]:
 
 
 # Load gene dependency data
-dependency_df = pd.read_parquet(dependency_file, index_col=0)
+dependency_df = pd.read_csv(dependency_file).set_index("ModelID")
 
 print(dependency_df.shape)
 dependency_df.head()
@@ -59,7 +59,7 @@ dependency_df.head()
 
 
 # Load depmap metadata
-gene_meta_df = pd.read_parquet(qc_gene_file, sep="\t")
+gene_meta_df = pd.read_csv(qc_gene_file, sep="\t")
 gene_meta_df.entrezgene = gene_meta_df.entrezgene.astype(str)
 
 print(gene_meta_df.shape)
@@ -74,7 +74,8 @@ gene_meta_df.head(3)
 
 
 # Recode column names to entrez ids from dependency file
-entrez_genes = [x[1].strip(")").strip() for x in dependency_df.iloc[:, 1:].columns.str.split("(")]
+# (ModelID is the index now, not a column, so every column here is a gene)
+entrez_genes = [x[1].strip(")").strip() for x in dependency_df.columns.str.split("(")]
 
 # Obtain intersection of entrez gene ids
 entrez_intersection = list(
@@ -168,7 +169,7 @@ gene_dictionary_qc_df = (
 )
 
 # Output file
-gene_dictionary_qc_df.to_parquet(output_gene_dict_file, index=False, sep="\t")
+gene_dictionary_qc_df.to_parquet(output_gene_dict_file, index=False)
 
 print(gene_dictionary_qc_df.qc_pass.value_counts())
 print(gene_dictionary_qc_df.shape)

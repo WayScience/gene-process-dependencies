@@ -35,8 +35,8 @@ fig_dir = pathlib.Path("figures")
 fig_dir.mkdir(exist_ok=True)
 
 # Input files
-model_input_file = pathlib.Path(f"{data_dir}/Model.parquet")
-crispr_input_file = pathlib.Path(f"{data_dir}/CRISPRGeneEffect.parquet")
+model_input_file = pathlib.Path(f"{data_dir}/Model.csv")
+crispr_input_file = pathlib.Path(f"{data_dir}/CRISPRGeneEffect.csv")
 gene_input_file = pathlib.Path(f"{data_dir}/depmap_gene_meta.tsv")
 
 # Output figures
@@ -58,7 +58,7 @@ adult_cancer_type_output_figure = pathlib.Path(
 
 
 # Load model data
-model_df = pd.read_parquet(model_input_file)
+model_df = pd.read_csv(model_input_file)
 
 print(model_df.shape)
 model_df.head(3)
@@ -68,7 +68,7 @@ model_df.head(3)
 
 
 # Load gene effect data
-gene_dependency_df = pd.read_parquet(crispr_input_file)
+gene_dependency_df = pd.read_csv(crispr_input_file)
 
 print(gene_dependency_df.shape)
 gene_dependency_df.head(3)
@@ -89,16 +89,16 @@ gene_meta_df.head(3)
 # In[7]:
 
 
-# Model.parquet visualization
-# How many samples from Model.parquet?
+# Model.csv visualization
+# How many samples from Model.csv?
 n_samples_model = len(model_df["ModelID"].unique())
-print(f"Number of samples documented in Model.parquet: {n_samples_model} \n")
+print(f"Number of samples documented in Model.csv: {n_samples_model} \n")
 
-# How many samples from CRISPRGeneDependency.parquet?
+# How many samples from CRISPRGeneDependency.csv?
 n_samples_gene = len(gene_dependency_df["ModelID"].unique())
-print(f"Number of samples measured in CRISPRGeneDependency.parquet: {n_samples_gene} \n")
+print(f"Number of samples measured in CRISPRGeneDependency.csv: {n_samples_gene} \n")
 
-# Identify which samples are included in both Model.parquet and CRISPRGeneDependency.parquet
+# Identify which samples are included in both Model.csv and CRISPRGeneDependency.csv
 sample_overlap = list(set(model_df["ModelID"]) & set(gene_dependency_df["ModelID"]))
 
 # count the number of samples that overlap in both data sets

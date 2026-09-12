@@ -1,6 +1,7 @@
 import pathlib
 import matplotlib.pyplot as plt
-import numpy as np 
+import numpy as np
+import pandas as pd
 
 def plot_pinwheel(sample_id, final_scores, id, name, labels=None):
     save_dir = pathlib.Path("./visualize/pinwheels").resolve()
@@ -45,7 +46,7 @@ def plot_pinwheel(sample_id, final_scores, id, name, labels=None):
     plt.savefig(plot_path, bbox_inches='tight')  # Save with tight bounding box
     plt.close()  # Close the plot to free memory
 
-def compute_and_plot_latent_scores(model_id, latent_df, comp_df, id, score, name):
+def compute_and_plot_latent_scores(model_id, latent_df, comp_df, id, score, name, make_plot=True):
     """
     Computes pathway scores based on latent dimensions and generates a pinwheel plot.
 
@@ -56,6 +57,8 @@ def compute_and_plot_latent_scores(model_id, latent_df, comp_df, id, score, name
         id (str): Column name for pathway or drug identifiers.
         score (str): Column name for the score used in calculations.
         name (str): Type of plot - e.g. pathway or drug.
+        make_plot (bool): Whether to generate and save a pinwheel plot. Default True,
+            matching prior behavior; pass False to compute scores without plotting.
     """
     # Filter by ModelID
     latent_filtered = latent_df[latent_df["ModelID"] == model_id].copy()
@@ -82,14 +85,18 @@ def compute_and_plot_latent_scores(model_id, latent_df, comp_df, id, score, name
         how="inner"
     )
 
-    # Compute final pathway scores
-    merged_df["pathway_score"] = abs(merged_df["latent_score"]) * comp_long[score]
+    # Compute final pathway scores. Using merged_df[score] here, not comp_long[score]:
+    # merged_df is the result of an inner join and has its own fresh index, which
+    # doesn't line up with comp_long's original index or length. Multiplying against
+    # comp_long[score] directly silently misaligns rows (and can introduce NaNs) rather
+    # than raising, so it must use the copy of the column that actually survived the merge.
+    merged_df["pathway_score"] = abs(merged_df["latent_score"]) * merged_df[score]
     merged_df = merged_df.dropna(subset=["pathway_score"])
-    
+
     print(model_id)
-    
-    # Generate the plot
-    plot_pinwheel(model_id, merged_df, id, name)
+
+    if make_plot:
+        plot_pinwheel(model_id, merged_df, id, name)
 
     return merged_df
     
@@ -108,7 +115,7 @@ def assign_unique_latent_dims(df, score_col, target_col, latent_col="z"):
     - pd.DataFrame: A filtered DataFrame with unique latent dimensions assigned to each pathway/drug.
     """
     # Check to see if score is pearson correlation or not, so the ordering is the correct direction. GSEA results are non-directional, pearson correlation is
-    if score_col is not "pearson_correlation":
+    if score_col != "pearson_correlation":
         df[score_col] = df[score_col].abs()
         is_drug = False
     else:

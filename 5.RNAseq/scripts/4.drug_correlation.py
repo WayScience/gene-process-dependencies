@@ -102,9 +102,9 @@ prism_df.head(3)
 data_dir = pathlib.Path("../0.data-download/data")
 
 # Input files
-model_input_file = pathlib.Path(f"{data_dir}/Model.parquet")
+model_input_file = pathlib.Path(f"{data_dir}/Model.csv")
 
-model_df = pd.read_parquet(model_input_file)
+model_df = pd.read_csv(model_input_file)
 
 
 # In[ ]:

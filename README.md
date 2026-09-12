@@ -33,6 +33,7 @@ This repository is a numbered pipeline, meant to be run in order.
 | [5.RNAseq](5.RNAseq/) | Bridge to RNA-seq | Train models that predict each latent dimension from RNA-seq expression, for samples without a CRISPR screen |
 | [6.collab-data](6.collab-data/) | Apply to external data | Apply the RNA-seq bridge to real collaborator samples and compare predicted vulnerabilities to observed cell killing |
 | [7.shiny-app](7.shiny-app/) | Prepare visualization data | Build the PCA projections used by the project's Shiny app |
+| [8.apply-biobombe-new-data](8.apply-biobombe-new-data/) | Apply BioBombe to new data | Align new gene dependency data to the trained ensemble's genes, sanity-check its distribution against DepMap, apply every saved model, and annotate the resulting latent scores with pathways and drugs |
 
 ## Status
 

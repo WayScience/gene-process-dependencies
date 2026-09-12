@@ -5,7 +5,7 @@
 # 
 # Source: [Cancer Dependency Map resource](https://depmap.org/portal/download/).
 # 
-# - `CRISPRGeneDependency.parquet`: The data in this document describes the probability that a gene knockdown has an effect on cell-inhibition or death. These probabilities are derived from the data contained in CRISPRGeneEffect.parquet using methods described [here](https://doi.org/10.1101/720243)
+# - `CRISPRGeneDependency.csv`: The data in this document describes the probability that a gene knockdown has an effect on cell-inhibition or death. These probabilities are derived from the data contained in CRISPRGeneEffect.csv using methods described [here](https://doi.org/10.1101/720243)
 # - `
 # 
 # >Tsherniak A, Vazquez F, Montgomery PG, Weir BA, Kryukov G, Cowley GS, Gill S, Harrington WF, Pantel S, Krill-Burger JM, Meyers RM, Ali L, Goodale A, Lee Y, Jiang G, Hsiao J, Gerath WFJ, Howell S, Merkel E, Ghandi M, Garraway LA, Root DE, Golub TR, Boehm JS, Hahn WC. Defining a Cancer Dependency Map. Cell. 2017 Jul 27;170(3):564-576.
