@@ -29,7 +29,7 @@ print(random.random())
 
 
 # load the data
-data_directory = pathlib.Path("../0.data-download/data").resolve()
+data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 train_init, test_init, val_init, gene_stats = load_train_test_data(
     data_directory, train_or_test="all", load_gene_stats=True, drop_columns=False
 )

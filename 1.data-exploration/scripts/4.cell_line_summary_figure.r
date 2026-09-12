@@ -27,6 +27,11 @@ crispr_df <- readr::read_csv(
     crispr_input_file
 )
 
+# DepMap's own CSV leaves the first column (ModelID) unlabeled, so name it
+# explicitly rather than relying on the header (readr calls it "...1").
+crispr_df <- crispr_df %>%
+    dplyr::rename(ModelID = 1)
+
 print(dim(crispr_df))
 
 # Get common depmap identifiers

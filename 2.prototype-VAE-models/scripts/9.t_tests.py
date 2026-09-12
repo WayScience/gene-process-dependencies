@@ -19,7 +19,7 @@ import pathlib
 
 latent_dir = pathlib.Path("results/latent_df.parquet").resolve()
 latent_df = pd.read_parquet(latent_dir)
-metadata_dir = pathlib.Path(".././0.data-download/data/metadata_df.parquet").resolve()
+metadata_dir = pathlib.Path("../1.data-exploration/data/metadata_df.parquet").resolve()
 metadata_df = pd.read_parquet(metadata_dir)
 data_dir = pathlib.Path("../0.data-download/data/").resolve()
 model_df, dependency_df = load_data(data_dir, adult_or_pediatric="all")

@@ -98,7 +98,7 @@ rna_seq_data = pd.read_parquet("../5.RNAseq/data/RNASeq.parquet")  # Replace wit
 rna_seq_data.rename(columns={'Unnamed: 0': 'SampleID'}, inplace=True)
 
 # Load gene dependency data
-data_directory = pathlib.Path("../0.data-download/data").resolve()
+data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 
 train_df, test_df, val_df, load_gene_stats = load_train_test_data(
     data_directory, train_or_test="all", load_gene_stats=True, zero_one_normalize=False, drop_columns=False

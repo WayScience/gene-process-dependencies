@@ -44,7 +44,7 @@ gene_dict_file = pathlib.Path(f"{data_directory}/CRISPR_gene_dictionary.parquet"
 
 
 # Load metadata
-metadata_df_dir = pathlib.Path("../0.data-download/data/metadata_df.parquet")
+metadata_df_dir = pathlib.Path("../1.data-exploration/data/metadata_df.parquet")
 metadata = pd.read_parquet(metadata_df_dir)
 print(metadata.shape)
 
@@ -68,7 +68,7 @@ dependency_df[dependency_df.select_dtypes(include="number").columns] = scaler.fi
 # In[6]:
 
 
-train_and_test_subbed_dir = pathlib.Path("../0.data-download/data/train_and_test_subbed.parquet")
+train_and_test_subbed_dir = pathlib.Path("../1.data-exploration/data/train_and_test_subbed.parquet")
 train_and_test_subbed = pd.read_parquet(train_and_test_subbed_dir)
 
 train_and_test_subbed[train_and_test_subbed.select_dtypes(include=["number"]).columns] = scaler.fit_transform(

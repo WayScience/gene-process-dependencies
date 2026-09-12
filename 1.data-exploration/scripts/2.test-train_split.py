@@ -152,9 +152,9 @@ val_df.reset_index(drop=True,inplace=True)
 
 
 #save each dataframe
-save_dataframe(train_df, pathlib.Path("../0.data-download/data/VAE_train_df.parquet").resolve())
-save_dataframe(test_df, pathlib.Path("../0.data-download/data/VAE_test_df.parquet").resolve())
-save_dataframe(val_df, pathlib.Path("../0.data-download/data/VAE_val_df.parquet").resolve())
+save_dataframe(train_df, pathlib.Path("data/VAE_train_df.parquet").resolve())
+save_dataframe(test_df, pathlib.Path("data/VAE_test_df.parquet").resolve())
+save_dataframe(val_df, pathlib.Path("data/VAE_val_df.parquet").resolve())
 
 
 # In[16]:
@@ -179,9 +179,9 @@ metadata = metadata_holder.assign(
     Sex=train_and_test.Sex.astype(str),
 )
 
-metadata_df_dir = pathlib.Path("../0.data-download/data/metadata_df.parquet").resolve()
+metadata_df_dir = pathlib.Path("data/metadata_df.parquet").resolve()
 metadata.to_parquet(metadata_df_dir, index=False)
 
-train_and_test_subbed_dir = pathlib.Path("../0.data-download/data/train_and_test_subbed.parquet").resolve()
+train_and_test_subbed_dir = pathlib.Path("data/train_and_test_subbed.parquet").resolve()
 train_and_test_subbed.to_parquet(train_and_test_subbed_dir, index=False)
 

@@ -48,8 +48,9 @@ output_gene_dict_file = pathlib.Path(f"{base_dir}/CRISPR_gene_dictionary.parquet
 # In[3]:
 
 
-# Load gene dependency data
-dependency_df = pd.read_csv(dependency_file).set_index("ModelID")
+# Load gene dependency data. DepMap's own CSV leaves the first column
+# (ModelID) unlabeled, so read it in by position rather than by name.
+dependency_df = pd.read_csv(dependency_file, index_col=0)
 
 print(dependency_df.shape)
 dependency_df.head()

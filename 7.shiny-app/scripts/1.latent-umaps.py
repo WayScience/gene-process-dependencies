@@ -21,16 +21,16 @@ import colorsys
 def generate_random_palette(num_colors, seed=12):
     # Generate random colors with varied lightness and saturation
     random.seed(seed)
-    
+
     colors = []
-    
+
     for _ in range(num_colors):
         h = random.random()  # Random hue between 0 and 1
         l = random.uniform(0.2, 0.8)  # Lightness between 0.3 and 0.9 for contrast
         s = random.uniform(0.5, 1.0)  # Saturation between 0.6 and 1.0 for vivid colors
         color = colorsys.hls_to_rgb(h, l, s)  # Convert HLS to RGB color
         colors.append(color)
-    
+
     return colors
 
 

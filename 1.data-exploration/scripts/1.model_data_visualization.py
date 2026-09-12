@@ -67,8 +67,10 @@ model_df.head(3)
 # In[5]:
 
 
-# Load gene effect data
+# Load gene effect data. DepMap's own CSV leaves the first column (ModelID)
+# unlabeled, so name it explicitly rather than relying on the header.
 gene_dependency_df = pd.read_csv(crispr_input_file)
+gene_dependency_df = gene_dependency_df.rename(columns={gene_dependency_df.columns[0]: "ModelID"})
 
 print(gene_dependency_df.shape)
 gene_dependency_df.head(3)

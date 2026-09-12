@@ -49,9 +49,10 @@ vvae_args = get_optimize_args_vvae()
 
 # Load data
 data_directory = pathlib.Path("../0.data-download/data").resolve()
+train_test_data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 
 train_df, test_df, val_df, load_gene_stats = load_train_test_data(
-    data_directory, train_or_test="all", load_gene_stats=True, zero_one_normalize=True
+    train_test_data_directory, train_or_test="all", load_gene_stats=True, zero_one_normalize=True
 )
 train_data = pd.DataFrame(train_df)
 

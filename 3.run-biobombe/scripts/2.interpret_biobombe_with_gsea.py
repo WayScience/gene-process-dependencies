@@ -26,9 +26,10 @@ from model_utils import extract_weights
 
 # Load data
 data_directory = pathlib.Path("../0.data-download/data").resolve()
+train_test_data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 
 train_df, test_df, val_df, load_gene_stats = load_train_test_data(
-    data_directory, train_or_test="all", load_gene_stats=True, zero_one_normalize=True
+    train_test_data_directory, train_or_test="all", load_gene_stats=True, zero_one_normalize=True
 )
 train_data = pd.DataFrame(train_df)
 
@@ -42,9 +43,8 @@ gene_dict_df = pd.DataFrame(gene_dict_df)
 
 
 #Load weight data for VAEs
-data_directory = pathlib.Path("../0.data-download/data").resolve()
 weight_df = load_train_test_data(
-    data_directory, train_or_test="train"
+    train_test_data_directory, train_or_test="train"
 )
 
 gene_list_passed_qc = gene_dict_df.loc[

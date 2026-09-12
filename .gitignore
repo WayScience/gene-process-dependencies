@@ -1,5 +1,6 @@
 .ipynb_checkpoints
 0.data-download/data/*
+1.data-exploration/data/*
 1.data-exploration/test_data_loader.ipynb
 __pycache__
 2.prototype-VAE-models/parameter_sweep

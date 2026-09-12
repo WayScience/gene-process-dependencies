@@ -30,7 +30,7 @@ from data_loader import load_train_test_data
 
 
 # Load data
-data_directory = pathlib.Path("../0.data-download/data").resolve()
+data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 train_data, test_data, val_data, load_gene_stats = load_train_test_data(
     data_directory, train_or_test="all", load_gene_stats=True, zero_one_normalize=True
 )
@@ -141,10 +141,10 @@ plt.show()
 
 
 # Extract the latent space dimensions
-metadata_df_dir = pathlib.Path("../0.data-download/data/metadata_df.parquet")
+metadata_df_dir = pathlib.Path("../1.data-exploration/data/metadata_df.parquet")
 metadata = pd.read_parquet(metadata_df_dir)
 
-train_and_test_subbed_dir = pathlib.Path("../0.data-download/data/train_and_test_subbed.parquet")
+train_and_test_subbed_dir = pathlib.Path("../1.data-exploration/data/train_and_test_subbed.parquet")
 train_and_test_subbed = pd.read_parquet(train_and_test_subbed_dir)
 
 
@@ -169,7 +169,7 @@ latent_df.to_parquet(latent_df_dir, index=False)
 
 
 # Load data
-data_directory = pathlib.Path("../0.data-download/data").resolve()
+data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 train_df = load_train_test_data(
     data_directory, train_or_test="train"
 )

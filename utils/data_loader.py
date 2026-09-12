@@ -29,9 +29,11 @@ def load_data(data_directory, adult_or_pediatric="all", id_column="ModelID"):
     model_file = pathlib.Path(data_directory, "Model.csv")
     effect_data_file = pathlib.Path(data_directory, "CRISPRGeneEffect.csv")
 
-    # Load data
+    # Load data. DepMap's own CSV leaves the gene-effect file's first column
+    # (ModelID) unlabeled, so name it explicitly rather than relying on the header.
     model_df = pd.read_csv(model_file)
     effect_df = pd.read_csv(effect_data_file).dropna(axis=1)
+    effect_df = effect_df.rename(columns={effect_df.columns[0]: id_column})
 
     # Rearrange model info and gene effect dataframe indices
     model_df = model_df.sort_index(ascending=True).reset_index()
