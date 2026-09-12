@@ -49,7 +49,10 @@ def load_depmap_reference(data_directory):
         qc_pass_pan, qc_pass_other, qc_pass), not filtered to QC-passed only.
     """
     data_directory = pathlib.Path(data_directory)
+    # DepMap's own CSV leaves the first column (ModelID) unlabeled, so name it
+    # explicitly rather than relying on the header.
     depmap_df = pd.read_csv(data_directory / "CRISPRGeneEffect.csv")
+    depmap_df = depmap_df.rename(columns={depmap_df.columns[0]: "ModelID"})
     gene_dict_df = pd.read_parquet(data_directory / "CRISPR_gene_dictionary.parquet")
     gene_dict_df["entrez_id"] = gene_dict_df["entrez_id"].astype(str)
     return depmap_df, gene_dict_df
@@ -80,11 +83,12 @@ def get_trained_gene_order(model_save_dir):
     Returns
     -------
     list of str
-        Gene symbol_id values, in the order the ensemble was trained on.
+        Gene dependency_column values (DepMap's "SYMBOL (ENTREZID)" format),
+        in the order the ensemble was trained on.
     """
     model_save_dir = pathlib.Path(model_save_dir)
     gene_order_file = model_save_dir.parent / "data" / "trained_gene_order.parquet"
-    trained_gene_order = pd.read_parquet(gene_order_file)["symbol_id"].tolist()
+    trained_gene_order = pd.read_parquet(gene_order_file)["dependency_column"].tolist()
 
     pca_models = sorted(model_save_dir.glob("pca_*.joblib"))
     if not pca_models:
@@ -230,14 +234,16 @@ def assess_gene_overlap(new_df, depmap_df, gene_dict_df, trained_gene_order, gen
     }
     depmap_entrez_ids.discard(None)
 
-    trained_gene_to_entrez = dict(zip(gene_dict_df["symbol_id"], gene_dict_df["entrez_id"]))
-    trained_entrez_ids = {
-        trained_gene_to_entrez[g] for g in trained_gene_order if g in trained_gene_to_entrez
-    }
+    # trained_gene_order entries are dependency_column values ("SYMBOL (ENTREZID)"),
+    # not bare symbols, so their entrez id comes from parsing the string itself
+    # rather than looking them up in gene_dict_df["symbol_id"].
+    trained_gene_to_entrez = {g: _entrez_from_depmap_column(g) for g in trained_gene_order}
+    trained_entrez_ids = set(trained_gene_to_entrez.values())
+    trained_entrez_ids.discard(None)
 
     trained_genes_missing_in_new = [
         g for g in trained_gene_order
-        if trained_gene_to_entrez.get(g) not in resolved_entrez_ids
+        if trained_gene_to_entrez[g] not in resolved_entrez_ids
     ]
 
     resolved_in_order = [e for e in entrez_map.values() if e is not None]
@@ -279,17 +285,21 @@ def format_to_depmap_genes(new_df, depmap_df, overlap_report):
     }
     depmap_gene_columns = [c for c in depmap_df.columns if c != "ModelID"]
 
-    aligned = pd.DataFrame(index=new_df.index)
+    # Building a plain dict of columns first and constructing the DataFrame in
+    # one shot avoids pandas fragmentation warnings from inserting thousands
+    # of columns one at a time into a growing DataFrame.
+    columns = {}
     for depmap_column in depmap_gene_columns:
         entrez_id = _entrez_from_depmap_column(depmap_column)
         source_column = entrez_to_new_column.get(entrez_id)
-        aligned[depmap_column] = new_df[source_column] if source_column is not None else np.nan
+        columns[depmap_column] = new_df[source_column] if source_column is not None else np.nan
 
+    aligned = pd.DataFrame(columns, index=new_df.index)
     aligned.insert(0, "ModelID", new_df["ModelID"].values)
     return aligned
 
 
-def format_to_trained_gene_order(new_df, gene_dict_df, trained_gene_order, overlap_report):
+def format_to_trained_gene_order(new_df, trained_gene_order, overlap_report):
     """
     Reindex new data to exactly the genes and order the trained ensemble expects.
 
@@ -305,31 +315,39 @@ def format_to_trained_gene_order(new_df, gene_dict_df, trained_gene_order, overl
     entrez_to_new_column = {
         e: c for c, e in overlap_report["entrez_map"].items() if e is not None
     }
-    gene_to_entrez = dict(zip(gene_dict_df["symbol_id"], gene_dict_df["entrez_id"]))
 
-    aligned = pd.DataFrame(index=new_df.index)
+    columns = {}
     for gene in trained_gene_order:
-        entrez_id = gene_to_entrez.get(gene)
+        entrez_id = _entrez_from_depmap_column(gene)
         source_column = entrez_to_new_column.get(entrez_id)
-        aligned[gene] = new_df[source_column] if source_column is not None else np.nan
+        columns[gene] = new_df[source_column] if source_column is not None else np.nan
+
+    aligned = pd.DataFrame(columns, index=new_df.index)
 
     aligned.insert(0, "ModelID", new_df["ModelID"].values)
     return aligned
 
 
-def fit_and_persist_scaler(data_directory, trained_gene_order, output_path):
+def fit_and_persist_scaler(train_test_data_directory, trained_gene_order, output_path):
     """
     Fit a MinMaxScaler on the original training data and persist it, alongside
     the per-gene training means used to impute genes missing from new data.
 
-    This must be fit on the same data the ensemble was trained on, not on any
-    new dataset: scaling relative to a different cohort would make latent
-    scores incomparable to the ones the models actually learned to produce.
+    This must be fit on the exact data the ensemble was trained on: the
+    670-model train split (1.data-exploration/data/VAE_train_df.parquet), not
+    DepMap's full ~1150-model cohort. 3.run-biobombe/scripts/1.train_biobombe_ensemble.py
+    fits its zero_one_normalize=True MinMaxScaler on that same train split and
+    applies it to every model type uniformly (PCA, ICA, NMF, and every VAE
+    variant) — there's no per-model-type normalization, and no z-scoring
+    anywhere in this pipeline. Fitting on the full DepMap cohort instead gives
+    a measurably different min/max for roughly 40% of genes, which showed up
+    as new data scaling to values outside [0, 1] — breaking NMF, which
+    requires non-negative input, on every model in the ensemble.
 
     Parameters
     ----------
-    data_directory : str or pathlib.Path
-        Path to 0.data-download/data.
+    train_test_data_directory : str or pathlib.Path
+        Path to 1.data-exploration/data.
     trained_gene_order : list of str
         Output of get_trained_gene_order; fixes both which genes are scaled
         and the column order the scaler's indices correspond to.
@@ -342,17 +360,15 @@ def fit_and_persist_scaler(data_directory, trained_gene_order, output_path):
     persisted so a caller only needs to load output_path later, not recompute
     trained_gene_order or re-derive means separately).
     """
-    depmap_df, gene_dict_df = load_depmap_reference(data_directory)
+    import sys as _sys
 
-    entrez_to_depmap_column = {
-        _entrez_from_depmap_column(c): c for c in depmap_df.columns if c != "ModelID"
-    }
-    gene_to_entrez = dict(zip(gene_dict_df["symbol_id"], gene_dict_df["entrez_id"]))
+    utils_dir = pathlib.Path(__file__).resolve().parent.parent.parent / "utils"
+    if str(utils_dir) not in _sys.path:
+        _sys.path.insert(0, str(utils_dir))
+    from data_loader import load_train_test_data
 
-    training_df = pd.DataFrame(index=depmap_df.index)
-    for gene in trained_gene_order:
-        depmap_column = entrez_to_depmap_column.get(gene_to_entrez.get(gene))
-        training_df[gene] = depmap_df[depmap_column] if depmap_column is not None else np.nan
+    training_df = load_train_test_data(train_test_data_directory, train_or_test="train")
+    training_df = training_df.reindex(columns=trained_gene_order)
 
     gene_means = training_df.mean(axis=0, skipna=True)
     training_df = training_df.fillna(gene_means)
@@ -369,14 +385,14 @@ def fit_and_persist_scaler(data_directory, trained_gene_order, output_path):
     return bundle
 
 
-def get_or_create_scaler(data_directory, trained_gene_order, output_path):
+def get_or_create_scaler(train_test_data_directory, trained_gene_order, output_path):
     """
     Load the persisted scaler bundle if it exists, otherwise fit and persist one.
     """
     output_path = pathlib.Path(output_path)
     if output_path.exists():
         return joblib.load(output_path)
-    return fit_and_persist_scaler(data_directory, trained_gene_order, output_path)
+    return fit_and_persist_scaler(train_test_data_directory, trained_gene_order, output_path)
 
 
 def scale_new_data(model_ready_df, scaler_bundle):
@@ -409,42 +425,16 @@ def scale_new_data(model_ready_df, scaler_bundle):
     scaled_df = pd.DataFrame(scaled, columns=gene_order, index=model_ready_df.index)
     scaled_df.insert(0, "ModelID", model_ready_df["ModelID"].values)
 
-    scaled_df.attrs["n_imputed_per_gene"] = n_imputed_per_gene
+    # A raw Series in .attrs breaks to_parquet(): pandas tries to json.dumps()
+    # df.attrs into the file's own metadata, and a Series isn't JSON-serializable.
+    scaled_df.attrs["n_imputed_per_gene"] = n_imputed_per_gene.to_dict()
     return scaled_df
-
-
-def scale_depmap_reference(depmap_df, gene_dict_df, scaler_bundle):
-    """
-    Format and scale the original DepMap data the same way new data is scaled,
-    so the two are comparable in step 3's distribution checks.
-
-    Unlike scale_new_data, this doesn't need gene-id resolution: depmap_df is
-    the same data the scaler's training means and MinMaxScaler came from, so
-    every trained gene is present by construction.
-
-    Returns
-    -------
-    pd.DataFrame
-        ModelID + scaled gene columns, same column order as scaler_bundle["gene_order"].
-    """
-    gene_order = scaler_bundle["gene_order"]
-    gene_to_entrez = dict(zip(gene_dict_df["symbol_id"], gene_dict_df["entrez_id"]))
-    entrez_to_depmap_column = {
-        _entrez_from_depmap_column(c): c for c in depmap_df.columns if c != "ModelID"
-    }
-
-    aligned = pd.DataFrame(index=depmap_df.index)
-    for gene in gene_order:
-        depmap_column = entrez_to_depmap_column.get(gene_to_entrez.get(gene))
-        aligned[gene] = depmap_df[depmap_column] if depmap_column is not None else np.nan
-    aligned.insert(0, "ModelID", depmap_df["ModelID"].values)
-
-    return scale_new_data(aligned, scaler_bundle)
 
 
 def prepare_new_data_for_biobombe(
     new_data_path,
     data_directory,
+    train_test_data_directory,
     model_save_dir,
     scaler_path,
     sample_id_column=None,
@@ -469,7 +459,7 @@ def prepare_new_data_for_biobombe(
         scaler_bundle : the scaler bundle used
     """
     depmap_df, gene_dict_df = load_depmap_reference(data_directory)
-    trained_gene_order = get_trained_gene_order(data_directory, model_save_dir)
+    trained_gene_order = get_trained_gene_order(model_save_dir)
 
     raw = load_new_dependency_data(new_data_path, sample_id_column=sample_id_column)
     overlap_report = assess_gene_overlap(
@@ -477,9 +467,9 @@ def prepare_new_data_for_biobombe(
     )
 
     depmap_aligned = format_to_depmap_genes(raw, depmap_df, overlap_report)
-    model_ready = format_to_trained_gene_order(raw, gene_dict_df, trained_gene_order, overlap_report)
+    model_ready = format_to_trained_gene_order(raw, trained_gene_order, overlap_report)
 
-    scaler_bundle = get_or_create_scaler(data_directory, trained_gene_order, scaler_path)
+    scaler_bundle = get_or_create_scaler(train_test_data_directory, trained_gene_order, scaler_path)
     model_ready_scaled = scale_new_data(model_ready, scaler_bundle)
 
     return {

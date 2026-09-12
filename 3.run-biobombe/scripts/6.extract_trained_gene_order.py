@@ -75,5 +75,26 @@ print(f"Verified against {pca_models[0].name}: {pca_model.n_features_in_} genes"
 # In[5]:
 
 
-pd.DataFrame({"symbol_id": trained_gene_order}).to_parquet(output_file, index=False)
+# Split each "SYMBOL (ENTREZID)" column name into its own entrez_id and
+# symbol_id, the same convention 0.data-download/scripts/2.construct_gene_dictionary.py
+# uses for CRISPR_gene_dictionary.parquet. Storing all three columns here
+# means consumers can look up entrez_id/symbol_id directly instead of
+# re-parsing dependency_column strings themselves.
+entrez_ids = [x[1].strip(")").strip() for x in weight_data.columns.str.split("(")]
+symbol_ids = [x[0].strip() for x in weight_data.columns.str.split("(")]
+
+trained_gene_dict = pd.DataFrame({
+    "entrez_id": entrez_ids,
+    "symbol_id": symbol_ids,
+    "dependency_column": trained_gene_order,
+})
+
+print(trained_gene_dict.shape)
+trained_gene_dict.head()
+
+
+# In[6]:
+
+
+trained_gene_dict.to_parquet(output_file, index=False)
 print(f"Saved trained gene order to {output_file}")
