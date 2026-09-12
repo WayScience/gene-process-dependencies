@@ -7,7 +7,7 @@
 # The BioBombe ensemble (3.run-biobombe/saved_models/) was trained on this exact release; the individual-file figshare IDs previously used here (e.g. 40448555 for CRISPRGeneEffect) turned out to serve whatever DepMap considers "latest," which had since moved on to a newer, differently-shaped release and silently broke every gene-order assumption downstream. Pinning to the 24Q2 article's own file IDs avoids that drifting out from under the trained models again.
 #
 # - `CRISPRGeneDependency.csv`: The data in this document describes the probability that a gene knockdown has an effect on cell-inhibition or death. These probabilities are derived from the data contained in CRISPRGeneEffect.csv using methods described [here](https://doi.org/10.1101/720243)
-# - `Model.csv`: Metadata for all of DepMap’s cancer models/cell lines.
+# - `Model.csv`: Metadata for all of DepMap's cancer models/cell lines.
 # - `CRISPRGeneEffect.csv`: The data in this document are the Gene Effect Scores obtained from CRISPR knockout screens conducted by the Broad Institute. Negative scores notate that cell growth inhibition and/or death occurred following a gene knockout. Information on how these Gene Effect Scores were determined can be found [here](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-021-02540-7)
 # - `depmap_gene_meta.tsv`: Genes that passed QC and were included in the training model for Pan et al. 2022. We use this data to filter genes as input to our models. The genes were filtered based 1) variance, 2) perturbation confidence, and 3) high on target predictions based on high correlation across other guides. Independent of the DepMap release itself, so not affected by the above.
 #
