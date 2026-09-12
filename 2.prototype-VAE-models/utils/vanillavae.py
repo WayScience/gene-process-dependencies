@@ -107,16 +107,21 @@ def evaluate_vvae(model, val_loader):
             val_loss += model.loss_function(recon, data, mu, log_var).item()
     return val_loss / len(val_loader.dataset)
 
-def vvae_extract_latent_dimensions(model: VanillaVAE, data_loader: DataLoader):
+def vvae_extract_latent_dimensions(model: VanillaVAE, data_loader: DataLoader, metadata: pd.DataFrame = None):
     """
     Extracts the latent dimensions (mean values) from the Vanilla VAE's encoder.
 
     Args:
         model (VAE): Trained VAE model.
         data_loader (DataLoader): DataLoader for the dataset.
+        metadata (DataFrame, optional): Metadata containing Model IDs, in the
+            same row order as data_loader. Matches the contract of
+            extract_latent_dimensions (betavae.py) and tc_extract_latent_dimensions
+            (betatcvae.py), which model_utils.py's extract_latent_dims relies on.
 
     Returns:
-        DataFrame: A DataFrame with the latent dimensions (mean values) for each sample.
+        DataFrame: A DataFrame with the latent dimensions (mean values) for each
+        sample, with a ModelID column if metadata is provided.
     """
     model.eval()
     latent_means = []
@@ -124,11 +129,14 @@ def vvae_extract_latent_dimensions(model: VanillaVAE, data_loader: DataLoader):
         for batch in data_loader:
             data = batch[0]
             mean, _ = model.encode(data)
-            latent_means.append(mean.cpu().numpy())
+            latent_means.append(mean.cpu())
 
     latent_means = torch.cat(latent_means, dim=0).numpy()
     latent_df = pd.DataFrame(latent_means)
-    
+
+    if metadata is not None:
+        latent_df.insert(0, "ModelID", metadata["ModelID"].values)
+
     return latent_df
 
 

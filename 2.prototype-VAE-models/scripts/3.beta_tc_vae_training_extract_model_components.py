@@ -18,7 +18,7 @@ from pathlib import Path
 script_directory = pathlib.Path("../2.prototype-VAE-models/utils/").resolve()
 sys.path.insert(0, str(script_directory))
 
-from betatcvae import BetaTCVAE, compile_tc_vae, tc_weights, extract_latent_dimensions
+from betatcvae import BetaTCVAE, compile_tc_vae, tc_weights, tc_extract_latent_dimensions
 from optimize_utils_tcvae import get_optimizer_tc
 
 script_directory = pathlib.Path("../utils/").resolve()
@@ -30,7 +30,7 @@ from data_loader import load_train_test_data
 
 
 # Load data
-data_directory = pathlib.Path("../0.data-download/data").resolve()
+data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 train_data, test_data, val_data, load_gene_stats = load_train_test_data(
     data_directory, train_or_test="all", load_gene_stats=True, zero_one_normalize=True
 )
@@ -141,7 +141,7 @@ plt.show()
 
 
 # Load data
-data_directory = pathlib.Path("../0.data-download/data").resolve()
+data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 train_df = load_train_test_data(
     data_directory, train_or_test="train", drop_columns=False
 )
@@ -168,10 +168,10 @@ final_gene_weights_df = tc_weights(model, train_data, path)
 
 
 # Extract the latent space dimensions
-metadata_df_dir = pathlib.Path("../0.data-download/data/metadata_df.parquet")
+metadata_df_dir = pathlib.Path("../1.data-exploration/data/metadata_df.parquet")
 metadata = pd.read_parquet(metadata_df_dir)
 
-train_and_test_subbed_dir = pathlib.Path("../0.data-download/data/train_and_test_subbed.parquet")
+train_and_test_subbed_dir = pathlib.Path("../1.data-exploration/data/train_and_test_subbed.parquet")
 train_and_test_subbed = pd.read_parquet(train_and_test_subbed_dir)
 
 
@@ -185,6 +185,6 @@ train_and_test_subbed_loader = DataLoader(tensor_dataset, batch_size=32, shuffle
 
 path = "./results/tc_latent_df.parquet"
 
-latent_df = extract_latent_dimensions(model, train_and_test_subbed_loader, metadata, path)
+latent_df = tc_extract_latent_dimensions(model, train_and_test_subbed_loader, metadata, path)
 print(latent_df.head())
 

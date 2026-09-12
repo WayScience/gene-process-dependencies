@@ -52,7 +52,7 @@ model_df.head(3)
 #Load correlation data
 #Load Model data
 correlation_data_dir = pathlib.Path("../4.drug-dependency/results/")
-correlation_input_file = pathlib.Path(f"{correlation_data_dir}/drug_correlation.parquet.gz")
+correlation_input_file = pathlib.Path(f"{correlation_data_dir}/drug_correlation.parquet")
 correlation_df = pd.read_parquet(correlation_input_file)
 
 print(correlation_df.shape)

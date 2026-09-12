@@ -6,8 +6,10 @@
 
 import pandas as pd
 import numpy as np
+import matplotlib
 import matplotlib.pyplot as plt
 import textwrap
+from typing import List
 
 
 # In[2]:
@@ -35,6 +37,7 @@ model_colors = {
 
 
 # In[3]:
+
 
 def clean_label(x: str) -> str:
     """
