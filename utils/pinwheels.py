@@ -63,13 +63,21 @@ def compute_and_plot_latent_scores(model_id, latent_df, comp_df, id, score, name
     # Filter by ModelID
     latent_filtered = latent_df[latent_df["ModelID"] == model_id].copy()
 
-    # Melt latent dataframe. value_vars is restricted to actual z_* latent
+    # Melt latent dataframe. value_vars is restricted to the actual latent
     # columns, not "every column that isn't an id_var": latent_df may carry
     # extra per-sample metadata (e.g. module 8 attaches whatever columns
-    # came with a new dataset), and melting those in alongside the z_*
+    # came with a new dataset), and melting those in alongside the latent
     # columns would break the str-to-int conversion below on a non-numeric
-    # metadata value.
-    z_columns = [c for c in latent_filtered.columns if c.startswith("z_")]
+    # metadata value. Identified by numeric dtype, not a "z_" name prefix:
+    # PCA/ICA/NMF name their columns "z_0", "z_1", ... but the VAE variants
+    # (betavae/betatcvae/vanillavae) name theirs plain "0", "1", ... - a
+    # name-prefix filter would silently drop every VAE-variant latent
+    # dimension here, which is exactly what happened before this was caught.
+    exclude = {"ModelID", "model", "latent_dim_total", "init", "seed"}
+    z_columns = [
+        c for c in latent_filtered.columns
+        if c not in exclude and pd.api.types.is_numeric_dtype(latent_filtered[c])
+    ]
     latent_long = latent_filtered.melt(
         id_vars=["ModelID", "model", "latent_dim_total", "init", "seed"],
         value_vars=z_columns,
