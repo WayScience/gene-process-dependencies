@@ -15,10 +15,20 @@
 # variants have 5 files per dimension, one per hyperparameter-search seed.
 # The dependency data is reindexed to `3.run-biobombe/data/trained_gene_order.parquet`'s
 # exact gene order before scoring, since every PCA/ICA/NMF component's
-# weights are tied to a specific gene position. The `MinMaxScaler` is fit
-# directly on this full ~1,150-model DepMap cohort and applied back to that
-# same cohort, consistent with how this script uses the already-trained,
-# saved models purely for inference here, not retraining.
+# weights are tied to a specific gene position.
+#
+# The scaler is the same persisted, train-split-fit bundle
+# `8.apply-biobombe-new-data/utils/data_prep.py` maintains, not a fresh fit on
+# this script's own full ~1,150-model cohort: the saved PCA/ICA/NMF models'
+# weights are tied to the specific per-gene scale they were trained under
+# (the 670-model train split), and a full-cohort fit shifts that scale for
+# roughly 40% of genes, which changes what the models' latent scores actually
+# mean, not just their numeric range. Every model type - including the VAE
+# variants, which this script scores directly against this same scaled
+# ~1,150-model cohort rather than the narrower 958-model population
+# `1.data-exploration/data/train_and_test_subbed.parquet` represents - sees
+# the identical scaled input and population, so no latent column is ever
+# missing a value for a cell line another model type has one for.
 #
 # Correlations are computed with `pairwise_compare` (vectorized Pearson
 # correlation via normalize-then-dot-product), batching drugs that share an
@@ -34,6 +44,7 @@
 
 
 import pathlib
+import re
 import sys
 
 import joblib
@@ -42,7 +53,6 @@ import pandas as pd
 import torch
 from pairwise_compare import compare_pairs, PearsonsCorrelation
 from scipy import stats
-from sklearn.preprocessing import MinMaxScaler
 from torch.utils.data import DataLoader, TensorDataset
 
 from utils import load_utils
@@ -50,6 +60,9 @@ from utils import load_utils
 sys.path.insert(0, "../utils/")
 from data_loader import load_model_data
 from model_utils import extract_latent_dims
+
+sys.path.insert(0, "../8.apply-biobombe-new-data/utils/")
+from data_prep import get_or_create_scaler
 
 
 # In[2]:
@@ -59,11 +72,18 @@ data_directory = pathlib.Path("../0.data-download/data").resolve()
 dependency_file = data_directory / "CRISPRGeneEffect.csv"
 gene_dict_file = data_directory / "CRISPR_gene_dictionary.parquet"
 trained_gene_order_file = pathlib.Path("../3.run-biobombe/data/trained_gene_order.parquet").resolve()
+train_test_data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 model_save_dir = pathlib.Path("../3.run-biobombe/saved_models").resolve()
 
 output_dir = pathlib.Path("results")
 output_dir.mkdir(parents=True, exist_ok=True)
 final_output_file = output_dir / "combined_latent_drug_correlations.parquet"
+
+# The one scaler artifact module 8 already maintains, fit on the correct
+# 670-model train split and self-validating (regenerates if its fit
+# population or gene schema ever falls out of sync with the current code) -
+# reused here rather than duplicating that fitting logic.
+scaler_path = pathlib.Path("../8.apply-biobombe-new-data/results/depmap_gene_scaler.joblib").resolve()
 
 
 # In[3]:
@@ -72,11 +92,18 @@ final_output_file = output_dir / "combined_latent_drug_correlations.parquet"
 dependency_df, gene_dict_df = load_model_data(dependency_file, gene_dict_file)
 
 trained_gene_order_df = pd.read_parquet(trained_gene_order_file)
+# dependency_column ("SYMBOL (ENTREZID)") is the format get_or_create_scaler's
+# bundle stores gene_order in; symbol_id (bare symbol) is what load_model_data
+# returns as dependency_df's actual column names. Both are the same row order
+# in trained_gene_order_df (one row per gene), so symbol_id can be used to
+# select/reindex dependency_df's columns while dependency_column is used only
+# to match the scaler bundle's own schema.
+dependency_column_order = trained_gene_order_df["dependency_column"].tolist()
 gene_order = trained_gene_order_df["symbol_id"].tolist()
 dependency_df = dependency_df[["ModelID"] + gene_order]
 
-scaler = MinMaxScaler()
-dependency_df[gene_order] = scaler.fit_transform(dependency_df[gene_order])
+scaler_bundle = get_or_create_scaler(train_test_data_directory, dependency_column_order, scaler_path)
+dependency_df[gene_order] = scaler_bundle["scaler"].transform(dependency_df[gene_order].values.astype(np.float32))
 print(f"dependency_df: {dependency_df.shape}")
 
 
@@ -113,33 +140,48 @@ for drug_col in prism_df_shuffled.columns:
 # In[6]:
 
 
-# Load metadata and the train/test/val tensor loader the VAE variants need
-metadata_df_dir = pathlib.Path("../1.data-exploration/data/metadata_df.parquet")
-metadata = pd.read_parquet(metadata_df_dir)
-
-train_and_test_subbed_dir = pathlib.Path("../1.data-exploration/data/train_and_test_subbed.parquet")
-train_and_test_subbed = pd.read_parquet(train_and_test_subbed_dir)
-train_test_tensor = torch.tensor(train_and_test_subbed.to_numpy(), dtype=torch.float32)
-train_and_test_subbed_loader = DataLoader(TensorDataset(train_test_tensor), batch_size=32, shuffle=False)
+# One scaled tensor and one ModelID frame, built from this same scaled
+# dependency_df, shared by every model type - including the VAE variants,
+# which otherwise have no direct use for dependency_df (their own
+# extract_latent_dimensions functions only need a DataLoader and a ModelID
+# frame in the same row order). Scoring every model against this identical
+# ~1,150-model population means no latent column is ever missing a value for
+# a cell line another model type has one for.
+full_tensor = torch.tensor(dependency_df[gene_order].values, dtype=torch.float32)
+full_loader = DataLoader(TensorDataset(full_tensor), batch_size=32, shuffle=False)
+full_metadata = dependency_df[["ModelID"]].reset_index(drop=True)
 
 
 # In[7]:
 
 
-# Discover every saved model file directly rather than guessing a filename -
-# see the module docstring above for why the original filename pattern never
-# matched anything, and why one file per (model, dimension) can't be assumed.
+# Discover every saved model file directly rather than guessing a filename,
+# and validate each one against the actual naming template
+# ({model}_latent_dims_{N}_trial_{T}_init_{I}_seed_{S}.joblib) before parsing
+# it, so a stray file that doesn't match it is skipped rather than crashing
+# the whole run on a parts-index error. A file that *does* match the
+# template but fails to load or score is a different kind of problem - that
+# fails the run below, rather than silently shipping a partial result.
+model_filename_pattern = re.compile(
+    r"^(?P<model>[a-z]+)_latent_dims_(?P<dim>\d+)_trial_(?P<trial>[^_]+)_init_(?P<init>\d+)_seed_(?P<seed>-?\d+)$"
+)
+
 all_model_files = sorted(model_save_dir.glob("*.joblib"))
 print(f"Found {len(all_model_files)} saved models")
 
 latent_frames = []
 skipped_models = []
+unrecognized_files = []
 for model_file in all_model_files:
-    parts = model_file.stem.split("_")
-    model_name, dim, init = parts[0], int(parts[3]), int(parts[7])
+    match = model_filename_pattern.match(model_file.stem)
+    if not match:
+        unrecognized_files.append(model_file.name)
+        continue
+    model_name, dim, init = match["model"], int(match["dim"]), int(match["init"])
+
     try:
         model = joblib.load(model_file)
-        latent_df = extract_latent_dims(model_name, model, dependency_df, train_and_test_subbed_loader, metadata)
+        latent_df = extract_latent_dims(model_name, model, dependency_df, full_loader, full_metadata)
     except Exception as e:
         skipped_models.append((model_file.name, str(e)))
         continue
@@ -153,10 +195,13 @@ for model_file in all_model_files:
     latent_frames.append(latent_df)
 
 print(f"Scored {len(latent_frames)} / {len(all_model_files)} models")
+if unrecognized_files:
+    print(f"{len(unrecognized_files)} files didn't match the expected naming template and were skipped: {unrecognized_files[:10]}")
 if skipped_models:
-    print(f"Skipped {len(skipped_models)}:")
-    for name, reason in skipped_models[:10]:
-        print(f"  {name}: {reason}")
+    raise RuntimeError(
+        f"{len(skipped_models)} models matching the expected naming template failed to load or score "
+        f"(first few: {skipped_models[:5]}) - fix the cause rather than exporting a partial ensemble."
+    )
 
 combined_latent_df = pd.concat(latent_frames, axis=1)
 print(f"combined_latent_df: {combined_latent_df.shape}")
@@ -173,6 +218,8 @@ latent_common = latent_common.loc[:, latent_common.var(skipna=True) != 0]
 prism_common = prism_df.loc[common_model_ids]
 prism_shuffled_common = prism_df_shuffled.loc[common_model_ids]
 print(f"Latent dimensions with non-zero variance: {latent_common.shape[1]}")
+print(f"Latent dimensions with any missing value among these {len(common_model_ids)} cell lines: "
+      f"{latent_common.isna().any().sum()}")
 
 
 # In[9]:
@@ -186,13 +233,15 @@ def correlate_against_drugs(latent_df, drug_df, shuffle_flag):
     Missingness is handled before calling pairwise_compare, not by it:
     pairwise_compare treats any row with a missing feature value as entirely
     uncorrelatable (NaN for every comparison involving that row), rather than
-    dropping missing values pairwise per comparison the way the original
-    per-pair loop did. PRISM's missingness is concentrated on the drug side
-    (checked directly: the latent scores have none), and drugs that share an
-    identical set of non-missing cell lines can be batched into one call
-    together - only ~232 distinct patterns exist across PRISM's ~4,686 drugs,
-    so this is ~232 calls rather than 4,686, each handling every latent
-    dimension against every drug in its batch in one vectorized step.
+    dropping missing values pairwise per comparison the way a naive per-pair
+    loop would. PRISM's missingness is concentrated on the drug side (every
+    model type now scores the identical population, so latent_df itself
+    should have none - checked explicitly below rather than assumed), and
+    drugs that share an identical set of non-missing cell lines can be
+    batched into one call together - only ~232 distinct patterns exist
+    across PRISM's ~4,686 drugs, so this is ~232 calls rather than 4,686,
+    each handling every latent dimension against every drug in its batch in
+    one vectorized step.
     """
     patterns = drug_df.notna().apply(lambda col: frozenset(col[col].index), axis=0)
     groups = patterns.groupby(patterns).groups
@@ -202,7 +251,15 @@ def correlate_against_drugs(latent_df, drug_df, shuffle_flag):
         valid_ids = [x for x in latent_df.index if x in pattern]
         if len(valid_ids) < 3:
             continue
-        sub_latent = latent_df.loc[valid_ids].dropna(axis=1)
+        sub_latent_full = latent_df.loc[valid_ids]
+        sub_latent = sub_latent_full.dropna(axis=1)
+        n_dropped = sub_latent_full.shape[1] - sub_latent.shape[1]
+        if n_dropped:
+            raise ValueError(
+                f"{n_dropped} latent columns have a missing value for this drug group's "
+                f"{len(valid_ids)} cell lines - every model type is expected to score the same "
+                "population, so this means that assumption broke, not that it's safe to drop silently."
+            )
         if sub_latent.shape[1] == 0:
             continue
         sub_drugs = drug_df.loc[valid_ids, list(drugs)]
