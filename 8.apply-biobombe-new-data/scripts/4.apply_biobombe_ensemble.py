@@ -14,6 +14,7 @@
 # In[ ]:
 
 
+import json
 import pathlib
 import sys
 
@@ -24,9 +25,6 @@ from torch.utils.data import DataLoader, TensorDataset
 
 sys.path.insert(0, "../utils/")
 from model_utils import extract_latent_dims
-
-sys.path.insert(0, "utils")
-import data_prep as dp
 
 
 # In[ ]:
@@ -118,15 +116,6 @@ combined_latent_df.head()
 # every column in it (other than ModelID) rides along on every row of the
 # combined latent scores.
 
-
-# ### Attach sample metadata
-# 
-# Whatever per-sample metadata comes with the new dataset (clinical info,
-# tumor type, etc.) — anything keyed by ModelID — gets carried through here
-# rather than dropped. Point sample_metadata_path at that file once it exists;
-# every column in it (other than ModelID) rides along on every row of the
-# combined latent scores.
-
 # In[ ]:
 
 
@@ -139,6 +128,7 @@ if sample_metadata_path.exists():
     added_cols = [c for c in combined_latent_df.columns if c not in before_cols]
     print(f"Attached sample metadata from {sample_metadata_path}: {added_cols}")
 else:
+    added_cols = []
     print(f"{sample_metadata_path} not found — proceeding without sample metadata.")
 
 
@@ -148,4 +138,13 @@ else:
 output_file = data_results_dir / "NF1_data_latent_scores.parquet"
 combined_latent_df.to_parquet(output_file, index=False)
 print(f"Saved combined latent scores to {output_file}")
+
+# Record which columns above are sample metadata, not latent dimensions, so
+# downstream consumers (e.g. compute_and_plot_latent_scores in
+# utils/pinwheels.py) can exclude them explicitly instead of guessing from
+# a name pattern or dtype - metadata attached here can be anything the new
+# dataset happens to carry, including a numeric column.
+metadata_cols_file = data_results_dir / "NF1_data_latent_scores_metadata_cols.json"
+metadata_cols_file.write_text(json.dumps(added_cols))
+print(f"Saved metadata column list to {metadata_cols_file}: {added_cols}")
 

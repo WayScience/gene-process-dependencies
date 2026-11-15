@@ -9,6 +9,8 @@ __pycache__
 8.apply-biobombe-new-data/data/*
 !8.apply-biobombe-new-data/data/.gitkeep
 8.apply-biobombe-new-data/visualize/pinwheels/
+4.drug-dependency/data/*
+4.drug-dependency/results/combined_latent_drug_correlations.parquet
 .venv
 *.egg-info
 .ruff_cache

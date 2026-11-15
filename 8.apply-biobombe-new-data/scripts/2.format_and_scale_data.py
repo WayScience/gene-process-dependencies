@@ -9,10 +9,14 @@
 # - model_ready_scaled: reindexed to exactly the genes and order the trained
 #   ensemble expects, then scaled with the persisted MinMaxScaler
 # 
-# The scaler is fit on the original DepMap training data the first time this
-# runs, and persisted to results/depmap_gene_scaler.joblib so every later run
-# (on this dataset or a future one) reuses the same scale rather than
-# rescaling relative to whatever new cohort happens to be loaded.
+# The scaler is fit the first time this runs on the exact 670-model train
+# split the ensemble was actually trained on (1.data-exploration/data/
+# VAE_train_df.parquet), not DepMap's broader ~1150-model cohort — fitting on
+# the broader cohort gives a measurably different min/max for roughly 40% of
+# genes, which scales new data outside [0, 1] and breaks NMF, which requires
+# non-negative input. It's persisted to results/depmap_gene_scaler.joblib so
+# every later run (on this dataset or a future one) reuses the same scale
+# rather than rescaling relative to whatever new cohort happens to be loaded.
 # 
 # Run this script with `8.apply-biobombe-new-data/` as the working directory.
 
@@ -22,6 +26,8 @@
 import pathlib
 import sys
 
+import pandas as pd
+
 sys.path.insert(0, "utils")
 import data_prep as dp
 
@@ -30,6 +36,7 @@ import data_prep as dp
 
 
 data_directory = pathlib.Path("../0.data-download/data").resolve()
+train_test_data_directory = pathlib.Path("../1.data-exploration/data").resolve()
 model_save_dir = pathlib.Path("../3.run-biobombe/saved_models").resolve()
 NF1_data_path = pathlib.Path("data/largaespada/NF1_data.parquet")
 
@@ -45,8 +52,9 @@ data_results_dir.mkdir(parents=True, exist_ok=True)
 
 
 prepared = dp.prepare_new_data_for_biobombe(
-    NF1_data_path=NF1_data_path,
+    new_data_path=NF1_data_path,
     data_directory=data_directory,
+    train_test_data_directory=train_test_data_directory,
     model_save_dir=model_save_dir,
     scaler_path=scaler_path,
 )
@@ -62,13 +70,13 @@ print(f"Model-ready, scaled: {model_ready_scaled.shape}")
 # In[ ]:
 
 
-n_imputed_per_gene = model_ready_scaled.attrs["n_imputed_per_gene"]
+n_imputed_per_gene = pd.Series(model_ready_scaled.attrs["n_imputed_per_gene"])
 n_genes_needing_imputation = (n_imputed_per_gene > 0).sum()
 print(f"{n_genes_needing_imputation} / {len(n_imputed_per_gene)} trained genes needed imputation "
       "(missing in the new data, filled with the DepMap training mean before scaling)")
 
 if n_genes_needing_imputation:
-    n_imputed_per_gene.sort_values(ascending=False).head(20)
+    print(n_imputed_per_gene.sort_values(ascending=False).head(20))
 
 
 # In[ ]:

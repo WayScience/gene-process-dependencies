@@ -14,6 +14,7 @@
 # In[ ]:
 
 
+import json
 import pathlib
 import sys
 
@@ -30,6 +31,24 @@ data_results_dir = pathlib.Path("data/largaespada/results")
 
 combined_latent_df = pd.read_parquet(data_results_dir / "NF1_data_latent_scores.parquet")
 print(f"Latent scores: {combined_latent_df.shape}")
+
+# Sample metadata columns (e.g. SUZ12, NF1, type) that
+# 4.apply_biobombe_ensemble.py attached to combined_latent_df and recorded
+# explicitly, so compute_and_plot_latent_scores below can exclude them by
+# name instead of guessing from dtype or a naming pattern. Required, not
+# optional: an older NF1_data_latent_scores.parquet predating this sidecar
+# would otherwise silently default to an empty metadata list, letting
+# SUZ12/NF1/type leak into the latent melt and fail integer conversion.
+metadata_cols_file = data_results_dir / "NF1_data_latent_scores_metadata_cols.json"
+if not metadata_cols_file.exists():
+    raise FileNotFoundError(
+        f"{metadata_cols_file} not found - this is required to know which columns "
+        "in NF1_data_latent_scores.parquet are sample metadata rather than latent "
+        "dimensions. Re-run 4.apply_biobombe_ensemble.py (which writes it) before "
+        "this script."
+    )
+metadata_cols = json.loads(metadata_cols_file.read_text())
+print(f"Sample metadata columns to exclude from latent melting: {metadata_cols}")
 
 
 # ### Pathway annotation: CORUM and Reactome, kept separate
@@ -99,7 +118,7 @@ for library, pathway_max in pathway_max_by_library.items():
     for model_id in combined_latent_df["ModelID"].unique():
         df = compute_and_plot_latent_scores(
             model_id, combined_latent_df, pathway_max, "reactome_pathway", "nes_score",
-            library, make_plot=False,
+            library, make_plot=False, metadata_cols=metadata_cols,
         )
         df["gene_set_library"] = library
         pathway_results.append(df)
@@ -115,14 +134,6 @@ print(f"Pathway annotations (CORUM + Reactome combined): {pathway_results_df.sha
 # produces. That script depends on `saved_models/`, which only exists locally
 # now — if it hasn't been run yet, drug annotation is skipped here rather than failing.
 
-
-# ### Drug annotation
-# 
-# This step needs `4.drug-dependency/results/combined_latent_drug_correlations.parquet`,
-# the ensemble-wide drug correlation table `4.drug-dependency/scripts/5.drug_latent_dim_correlation.py`
-# produces. That script depends on `saved_models/`, which only exists locally
-# now — if it hasn't been run yet, drug annotation is skipped here rather than failing.
-
 # In[ ]:
 
 
@@ -131,7 +142,7 @@ drug_correlation_path = pathlib.Path("../4.drug-dependency/results/combined_late
 if drug_correlation_path.exists():
     drug_df = pd.read_parquet(drug_correlation_path)
     significant_drug_df = drug_df[
-        (drug_df["pearson_correlation"].abs() > 0.15) & (drug_df["p_value"] < 0.05)
+        (~drug_df["shuffled"]) & (drug_df["pearson_correlation"].abs() > 0.15) & (drug_df["p_value"] < 0.05)
     ].copy()
     drug_max = assign_unique_latent_dims(
         significant_drug_df, score_col="pearson_correlation", target_col="name"
@@ -141,7 +152,7 @@ if drug_correlation_path.exists():
     for model_id in combined_latent_df["ModelID"].unique():
         df = compute_and_plot_latent_scores(
             model_id, combined_latent_df, drug_max, "name", "pearson_correlation", "Drug",
-            make_plot=False,
+            make_plot=False, metadata_cols=metadata_cols,
         )
         drug_results.append(df)
     drug_results_df = pd.concat(drug_results, ignore_index=True) if drug_results else pd.DataFrame()
@@ -152,9 +163,6 @@ else:
         f"{drug_correlation_path} not found — skipping drug annotation. "
         "Run 4.drug-dependency/scripts/5.drug_latent_dim_correlation.py first to enable it."
     )
-
-
-# ### Save top associations per sample
 
 
 # ### Save top associations per sample
