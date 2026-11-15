@@ -25,13 +25,16 @@
 #   at 50 components (1.0 = exactly as isolated as an ordinary training sample
 #   already is from its neighbors). Not meaningfully more isolated than
 #   ordinary training variation.
-# - **Biological plausibility**: 2 / 8 new samples (`iPN3D`, `iPN2J`) show a
-#   statistically significant (p < 0.05) enrichment for resembling DepMap's own
-#   MPNST lines more than chance predicts, at 50 PCA components — notably the
-#   iPSC-derived lines, not the tumor-derived ones. The new sample named
-#   `S462` correlates with DepMap's own `S462` line at r=0.689 (71st
-#   percentile of all 1,150 DepMap lines) — elevated, consistent with real
-#   similarity, but not a standout identity confirmation on its own.
+# - **Biological plausibility**: at 50 PCA components, `iPN3D` shows a
+#   statistically significant enrichment for resembling DepMap's own MPNST
+#   lines more than chance predicts, surviving Benjamini-Hochberg correction
+#   across the 8-sample family (q≈0.013); `iPN2J` looks suggestive at the raw
+#   p<0.05 threshold (p=0.034) but does not survive that correction (q≈0.13) -
+#   worth noting as a trend, not claiming as significant. Both are iPSC-derived
+#   lines, not the tumor-derived ones. The new sample named `S462` correlates
+#   with DepMap's own `S462` line at r=0.689 (71st percentile of all 1,150
+#   DepMap lines) — elevated, consistent with real similarity, but not a
+#   standout identity confirmation on its own.
 #
 # **The caveat**: this data sits at the edge of, not well inside, the training
 # cohort's dense region. Any resulting latent scores or pathway associations
@@ -81,7 +84,7 @@ gene_order = scaler_bundle["gene_order"]
 # drop_columns=False keeps ModelID and every gene (unfiltered, unscaled);
 # subsetting to gene_order here gives exactly what the scaler was fit on.
 train_raw_df = load_train_test_data(train_test_data_directory, train_or_test="train", drop_columns=False)
-train_raw_df = train_raw_df[["ModelID"] + gene_order]
+train_raw_df = train_raw_df[["ModelID", *gene_order]]
 
 train_scaled = scaler_bundle["scaler"].transform(train_raw_df[gene_order].values.astype(np.float32))
 train_scaled_df = pd.DataFrame(train_scaled, columns=gene_order)
@@ -386,8 +389,27 @@ for dim in pca_dims_for_correlation:
                 "observed_mean_correlation": observed_stat, "p_value": p_value,
             }))
 
+def benjamini_hochberg(p_values):
+    """Benjamini-Hochberg FDR-adjusted q-values for an array of p-values."""
+    p = np.asarray(p_values, dtype=float)
+    n = len(p)
+    order = np.argsort(p)
+    ranked = p[order] * n / (np.arange(n) + 1)
+    q_sorted = np.minimum.accumulate(ranked[::-1])[::-1]
+    q = np.empty(n)
+    q[order] = np.clip(q_sorted, 0, 1)
+    return q
+
+
 proximity_df = pd.DataFrame(proximity_rows)
+# Adjusted within each pca_latent_dim separately: the 8 samples tested at a
+# given dimensionality are the natural family of comparisons, not all 24
+# (8 samples x 3 dims) pooled together, since the three dimensionalities are
+# the same underlying test repeated for robustness, not independent hypotheses.
+proximity_df["q_value"] = proximity_df.groupby("pca_latent_dim")["p_value"].transform(benjamini_hochberg)
 print(proximity_df.pivot(index="ModelID", columns="pca_latent_dim", values="p_value").round(4))
+print("\nBenjamini-Hochberg adjusted (q-values), within each dimensionality's 8-sample family:")
+print(proximity_df.pivot(index="ModelID", columns="pca_latent_dim", values="q_value").round(4))
 
 proximity_file = data_results_dir / "NF1_data_mpnst_proximity_test.parquet"
 proximity_df.to_parquet(proximity_file, index=False)

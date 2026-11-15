@@ -123,7 +123,7 @@ drug_correlation_path = pathlib.Path("../4.drug-dependency/results/combined_late
 if drug_correlation_path.exists():
     drug_df = pd.read_parquet(drug_correlation_path)
     significant_drug_df = drug_df[
-        (drug_df["pearson_correlation"].abs() > 0.15) & (drug_df["p_value"] < 0.05)
+        (~drug_df["shuffled"]) & (drug_df["pearson_correlation"].abs() > 0.15) & (drug_df["p_value"] < 0.05)
     ].copy()
     drug_max = assign_unique_latent_dims(
         significant_drug_df, score_col="pearson_correlation", target_col="name"
