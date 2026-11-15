@@ -115,14 +115,6 @@ print(f"Pathway annotations (CORUM + Reactome combined): {pathway_results_df.sha
 # produces. That script depends on `saved_models/`, which only exists locally
 # now — if it hasn't been run yet, drug annotation is skipped here rather than failing.
 
-
-# ### Drug annotation
-# 
-# This step needs `4.drug-dependency/results/combined_latent_drug_correlations.parquet`,
-# the ensemble-wide drug correlation table `4.drug-dependency/scripts/5.drug_latent_dim_correlation.py`
-# produces. That script depends on `saved_models/`, which only exists locally
-# now — if it hasn't been run yet, drug annotation is skipped here rather than failing.
-
 # In[ ]:
 
 
@@ -152,9 +144,6 @@ else:
         f"{drug_correlation_path} not found — skipping drug annotation. "
         "Run 4.drug-dependency/scripts/5.drug_latent_dim_correlation.py first to enable it."
     )
-
-
-# ### Save top associations per sample
 
 
 # ### Save top associations per sample

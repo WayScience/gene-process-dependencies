@@ -25,9 +25,6 @@ from torch.utils.data import DataLoader, TensorDataset
 sys.path.insert(0, "../utils/")
 from model_utils import extract_latent_dims
 
-sys.path.insert(0, "utils")
-import data_prep as dp
-
 
 # In[ ]:
 
@@ -112,15 +109,6 @@ combined_latent_df.head()
 
 # ### Attach sample metadata
 #
-# Whatever per-sample metadata comes with the new dataset (clinical info,
-# tumor type, etc.) — anything keyed by ModelID — gets carried through here
-# rather than dropped. Point sample_metadata_path at that file once it exists;
-# every column in it (other than ModelID) rides along on every row of the
-# combined latent scores.
-
-
-# ### Attach sample metadata
-# 
 # Whatever per-sample metadata comes with the new dataset (clinical info,
 # tumor type, etc.) — anything keyed by ModelID — gets carried through here
 # rather than dropped. Point sample_metadata_path at that file once it exists;

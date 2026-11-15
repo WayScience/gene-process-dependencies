@@ -328,6 +328,17 @@ def format_to_trained_gene_order(new_df, trained_gene_order, overlap_report):
     return aligned
 
 
+# Bumped whenever fit_and_persist_scaler's fit population or schema contract
+# changes, so get_or_create_scaler can tell a bundle from an earlier
+# implementation apart from a current one instead of trusting any cached
+# file at output_path forever. An earlier implementation fit this same
+# output path on DepMap's full ~1150-model cohort instead of the 670-model
+# train split (see the docstring below for why that broke NMF); without this
+# marker, a bundle left over from that version would be loaded and reused
+# silently, since existence of the file was the only check.
+_SCALER_FIT_POPULATION = "1.data-exploration/VAE_train_df.parquet:train_split:v2"
+
+
 def fit_and_persist_scaler(train_test_data_directory, trained_gene_order, output_path):
     """
     Fit a MinMaxScaler on the original training data and persist it, alongside
@@ -376,7 +387,12 @@ def fit_and_persist_scaler(train_test_data_directory, trained_gene_order, output
     scaler = MinMaxScaler()
     scaler.fit(training_df.values.astype(np.float32))
 
-    bundle = {"scaler": scaler, "gene_order": trained_gene_order, "gene_means": gene_means}
+    bundle = {
+        "scaler": scaler,
+        "gene_order": trained_gene_order,
+        "gene_means": gene_means,
+        "fit_population": _SCALER_FIT_POPULATION,
+    }
 
     output_path = pathlib.Path(output_path)
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -387,11 +403,21 @@ def fit_and_persist_scaler(train_test_data_directory, trained_gene_order, output
 
 def get_or_create_scaler(train_test_data_directory, trained_gene_order, output_path):
     """
-    Load the persisted scaler bundle if it exists, otherwise fit and persist one.
+    Load the persisted scaler bundle if it exists and matches the current fit
+    population and gene schema; otherwise (re)fit and persist one.
+
+    A bundle's mere existence at output_path doesn't mean it's compatible —
+    it could be stale from an earlier implementation (e.g. fit on a
+    different population) or stale relative to a trained_gene_order that's
+    since changed. Checking fit_population and gene_order before reuse means
+    an incompatible cached bundle gets silently regenerated instead of
+    silently reused.
     """
     output_path = pathlib.Path(output_path)
     if output_path.exists():
-        return joblib.load(output_path)
+        bundle = joblib.load(output_path)
+        if bundle.get("fit_population") == _SCALER_FIT_POPULATION and bundle.get("gene_order") == trained_gene_order:
+            return bundle
     return fit_and_persist_scaler(train_test_data_directory, trained_gene_order, output_path)
 
 

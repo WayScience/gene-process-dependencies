@@ -3,17 +3,16 @@
 
 # ## Prepare the raw Largaespada lab MPNST data
 #
-# The delivered files, under `data/largaespada/raw_data/`, don't match what
-# `1.load_and_assess_gene_overlap.py`, `2.format_and_scale_data.py`, and
+# The delivered files, under `data/largaespada/raw_data/`, don't quite match
+# what `1.load_and_assess_gene_overlap.py`, `2.format_and_scale_data.py`, and
 # `4.apply_biobombe_ensemble.py` expect:
-# - `Achilles_scaled_gene_effects_MPNST.csv` has genes as rows and samples as
-#   columns (the transpose of DepMap's convention, which every downstream
-#   function assumes: samples as rows, genes as columns).
+# - `gene_effects.csv` is already samples-as-rows, genes-as-columns (DepMap's
+#   convention) and already rescored against the correct DepMap release
+#   BioBombe was trained on — but its sample identifier column is named
+#   "cell_line_name", not "ModelID".
 # - `largaespada_CRISPR_samples.csv`'s sample identifier column is named
 #   "sample", not "ModelID".
-# - Some gene columns use gene symbols HGNC has since renamed (e.g. "AARS"
-#   is now "AARS1", the old aminoacyl-tRNA synthetase names, the 2019 ATP
-#   synthase subunit renames, the 2020-21 histone nomenclature overhaul).
+# - A handful of gene columns use gene symbols HGNC has since renamed.
 #   BioBombe's own gene set (`3.run-biobombe/data/trained_gene_order.parquet`)
 #   is left exactly as it was trained on, out-of-date symbols and all; this
 #   only harmonizes the new data's symbols to match it.
@@ -30,9 +29,14 @@
 # This writes `NF1_data.parquet` and `NF1_metadata.parquet` directly under
 # `data/largaespada/`, the exact filenames those scripts already hardcode,
 # so nothing downstream needs to change. It also writes
-# `data/largaespada/results/genes_unresolved_after_alias_lookup.parquet`,
-# recording which trained genes have no match in this data at all (as of
-# the last time this ran), for documentation and future reference.
+# `data/largaespada/results/genes_missing_in_raw_data.parquet`, recording
+# every trained gene with no usable value anywhere in this data (as of the
+# last time this ran) — either because no column matches it under any known
+# name, or because its column exists but is entirely missing (NaN) for
+# every sample. Both cases most likely mean this screen's guide library
+# simply didn't cover that gene, not a resolution failure; either way,
+# `2.format_and_scale_data` imputes them with the training-split mean like
+# any other gene missing from a new dataset.
 #
 # Run this script with `8.apply-biobombe-new-data/` as the working
 # directory, once, whenever the raw files are replaced.
@@ -54,8 +58,8 @@ results_dir.mkdir(parents=True, exist_ok=True)
 # In[2]:
 
 
-gene_effects = pd.read_csv(raw_dir / "Achilles_scaled_gene_effects_MPNST.csv", index_col=0)
-gene_effects = gene_effects.T.reset_index(names="ModelID")
+gene_effects = pd.read_csv(raw_dir / "gene_effects.csv")
+gene_effects = gene_effects.rename(columns={"cell_line_name": "ModelID"})
 print(f"Loaded raw data: {gene_effects.shape[0]} samples, {gene_effects.shape[1] - 1} genes")
 
 
@@ -136,6 +140,21 @@ if still_missing:
 
 gene_effects = gene_effects.rename(columns=rename_map)
 
+# A trained gene can also be missing in a second way that the alias lookup
+# above can't see: its column exists (whether originally or after renaming)
+# but every value in it is NaN. gene_effects.csv carries a placeholder column
+# for genes outside this screen's guide library rather than omitting them,
+# so this check only looks among the trained genes that do have a column.
+present_trained_symbols = [g for g in trained_symbols if g in gene_effects.columns]
+all_nan_trained = [g for g in present_trained_symbols if gene_effects[g].isna().all()]
+print(f"{len(all_nan_trained)} / {len(present_trained_symbols)} trained genes with a matching column "
+      "have no value for any sample (most likely outside this screen's guide library)")
+
+missing_genes_df = pd.concat([
+    pd.DataFrame({"trained_gene": still_missing, "reason": "no_matching_column"}),
+    pd.DataFrame({"trained_gene": all_nan_trained, "reason": "column_present_but_all_values_missing"}),
+], ignore_index=True)
+
 gene_effects.to_parquet(largaespada_dir / "NF1_data.parquet", index=False)
 print(f"Wrote NF1_data.parquet: {gene_effects.shape[0]} samples, {gene_effects.shape[1] - 1} genes")
 
@@ -145,8 +164,6 @@ sample_metadata.to_parquet(largaespada_dir / "NF1_metadata.parquet", index=False
 print(f"Wrote NF1_metadata.parquet: {sample_metadata.shape[0]} samples, "
       f"columns {list(sample_metadata.columns)}")
 
-pd.DataFrame({"trained_gene_missing_from_raw_data": still_missing}).to_parquet(
-    results_dir / "genes_unresolved_after_alias_lookup.parquet", index=False
-)
-print(f"Wrote genes_unresolved_after_alias_lookup.parquet: {len(still_missing)} trained genes "
-      "have no match anywhere in the raw data, under any known name")
+missing_genes_df.to_parquet(results_dir / "genes_missing_in_raw_data.parquet", index=False)
+print(f"Wrote genes_missing_in_raw_data.parquet: {len(missing_genes_df)} / {len(trained_symbols)} trained genes "
+      "have no usable value anywhere in the raw data")

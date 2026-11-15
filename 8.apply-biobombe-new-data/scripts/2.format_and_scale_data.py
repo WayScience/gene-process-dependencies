@@ -9,10 +9,14 @@
 # - model_ready_scaled: reindexed to exactly the genes and order the trained
 #   ensemble expects, then scaled with the persisted MinMaxScaler
 # 
-# The scaler is fit on the original DepMap training data the first time this
-# runs, and persisted to results/depmap_gene_scaler.joblib so every later run
-# (on this dataset or a future one) reuses the same scale rather than
-# rescaling relative to whatever new cohort happens to be loaded.
+# The scaler is fit the first time this runs on the exact 670-model train
+# split the ensemble was actually trained on (1.data-exploration/data/
+# VAE_train_df.parquet), not DepMap's broader ~1150-model cohort — fitting on
+# the broader cohort gives a measurably different min/max for roughly 40% of
+# genes, which scales new data outside [0, 1] and breaks NMF, which requires
+# non-negative input. It's persisted to results/depmap_gene_scaler.joblib so
+# every later run (on this dataset or a future one) reuses the same scale
+# rather than rescaling relative to whatever new cohort happens to be loaded.
 # 
 # Run this script with `8.apply-biobombe-new-data/` as the working directory.
 
