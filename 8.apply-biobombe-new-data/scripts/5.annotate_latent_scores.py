@@ -35,9 +35,19 @@ print(f"Latent scores: {combined_latent_df.shape}")
 # Sample metadata columns (e.g. SUZ12, NF1, type) that
 # 4.apply_biobombe_ensemble.py attached to combined_latent_df and recorded
 # explicitly, so compute_and_plot_latent_scores below can exclude them by
-# name instead of guessing from dtype or a naming pattern.
+# name instead of guessing from dtype or a naming pattern. Required, not
+# optional: an older NF1_data_latent_scores.parquet predating this sidecar
+# would otherwise silently default to an empty metadata list, letting
+# SUZ12/NF1/type leak into the latent melt and fail integer conversion.
 metadata_cols_file = data_results_dir / "NF1_data_latent_scores_metadata_cols.json"
-metadata_cols = json.loads(metadata_cols_file.read_text()) if metadata_cols_file.exists() else []
+if not metadata_cols_file.exists():
+    raise FileNotFoundError(
+        f"{metadata_cols_file} not found - this is required to know which columns "
+        "in NF1_data_latent_scores.parquet are sample metadata rather than latent "
+        "dimensions. Re-run 4.apply_biobombe_ensemble.py (which writes it) before "
+        "this script."
+    )
+metadata_cols = json.loads(metadata_cols_file.read_text())
 print(f"Sample metadata columns to exclude from latent melting: {metadata_cols}")
 
 
