@@ -62,10 +62,17 @@ def compute_and_plot_latent_scores(model_id, latent_df, comp_df, id, score, name
     """
     # Filter by ModelID
     latent_filtered = latent_df[latent_df["ModelID"] == model_id].copy()
-    
-    # Melt latent dataframe
+
+    # Melt latent dataframe. value_vars is restricted to actual z_* latent
+    # columns, not "every column that isn't an id_var": latent_df may carry
+    # extra per-sample metadata (e.g. module 8 attaches whatever columns
+    # came with a new dataset), and melting those in alongside the z_*
+    # columns would break the str-to-int conversion below on a non-numeric
+    # metadata value.
+    z_columns = [c for c in latent_filtered.columns if c.startswith("z_")]
     latent_long = latent_filtered.melt(
         id_vars=["ModelID", "model", "latent_dim_total", "init", "seed"],
+        value_vars=z_columns,
         var_name="z",  # Latent dimension names
         value_name="latent_score"
     )

@@ -34,7 +34,16 @@ def extract_latent_dims(model_name, model, dependency_df, train_and_test_subbed_
         # Extract latent dimensions for PCA, ICA, or NMF models
         numerical_columns = dependency_df.select_dtypes(include=[np.number]).columns
         numerical_df = dependency_df[numerical_columns].astype(np.float32)  # Ensure float32 type
-        
+
+        if model_name == "nmf":
+            # NMF requires every input value to be non-negative. Data scaled
+            # with a scaler fit on a different (e.g. training) distribution
+            # can land slightly below 0 for genes where new data falls
+            # outside that distribution's range - floor at 0 rather than
+            # failing outright. No upper-bound clip: NMF has no upper-bound
+            # requirement, so values above 1 are left alone.
+            numerical_df = numerical_df.clip(lower=0)
+
         # Transform data into the reduced space
         latent_matrix = model.transform(numerical_df)
         
