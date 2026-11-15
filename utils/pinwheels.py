@@ -46,7 +46,7 @@ def plot_pinwheel(sample_id, final_scores, id, name, labels=None):
     plt.savefig(plot_path, bbox_inches='tight')  # Save with tight bounding box
     plt.close()  # Close the plot to free memory
 
-def compute_and_plot_latent_scores(model_id, latent_df, comp_df, id, score, name, make_plot=True):
+def compute_and_plot_latent_scores(model_id, latent_df, comp_df, id, score, name, make_plot=True, metadata_cols=()):
     """
     Computes pathway scores based on latent dimensions and generates a pinwheel plot.
 
@@ -59,33 +59,37 @@ def compute_and_plot_latent_scores(model_id, latent_df, comp_df, id, score, name
         name (str): Type of plot - e.g. pathway or drug.
         make_plot (bool): Whether to generate and save a pinwheel plot. Default True,
             matching prior behavior; pass False to compute scores without plotting.
+        metadata_cols (iterable of str): any extra, non-latent columns latent_df
+            carries beyond the standard ModelID/model/latent_dim_total/init/seed
+            columns (e.g. module 8 attaches whatever per-sample metadata came
+            with a new dataset). Must be passed explicitly by the caller, who
+            knows what it attached - a metadata column can be numeric (so a
+            dtype check doesn't exclude it) and isn't guaranteed to avoid any
+            particular name pattern (so a label-pattern check doesn't either).
     """
     # Filter by ModelID
     latent_filtered = latent_df[latent_df["ModelID"] == model_id].copy()
 
     # Melt latent dataframe. value_vars is restricted to the actual latent
-    # columns, not "every column that isn't an id_var": latent_df may carry
-    # extra per-sample metadata (e.g. module 8 attaches whatever columns
-    # came with a new dataset), and melting those in alongside the latent
-    # columns would break the str-to-int conversion below on a non-numeric
-    # metadata value. Identified by numeric dtype, not a "z_" name prefix:
-    # PCA/ICA/NMF name their columns "z_0", "z_1", ... but the VAE variants
-    # (betavae/betatcvae/vanillavae) name theirs plain "0", "1", ... - a
-    # name-prefix filter would silently drop every VAE-variant latent
-    # dimension here, which is exactly what happened before this was caught.
-    exclude = {"ModelID", "model", "latent_dim_total", "init", "seed"}
-    z_columns = [
-        c for c in latent_filtered.columns
-        if c not in exclude and pd.api.types.is_numeric_dtype(latent_filtered[c])
-    ]
+    # columns, identified as "every column that isn't an id_var or a
+    # caller-declared metadata column" - not by dtype or name pattern, since
+    # a metadata column can be numeric and/or digit-named just as validly as
+    # a real latent column (this is what broke before: an exclude list that
+    # didn't know about module 8's SUZ12/NF1/type columns, then a dtype/regex
+    # check that couldn't tell a numeric metadata column from a real one).
+    id_vars = ["ModelID", "model", "latent_dim_total", "init", "seed"]
+    exclude = set(id_vars) | set(metadata_cols)
+    z_columns = [c for c in latent_filtered.columns if c not in exclude]
     latent_long = latent_filtered.melt(
-        id_vars=["ModelID", "model", "latent_dim_total", "init", "seed"],
+        id_vars=id_vars,
         value_vars=z_columns,
         var_name="z",  # Latent dimension names
         value_name="latent_score"
     )
-    
-    # Convert z from string to int
+
+    # Convert z from string to int. This assumes every latent column is
+    # named "z_<int>" (PCA/ICA/NMF) or plain "<int>" (VAE variants) - the
+    # only two conventions any model type in this project currently uses.
     latent_long["z"] = latent_long["z"].astype(str).str.replace(r"^z_", "", regex=True).astype(int)
         
     # Prepare GSEA/drug dataframe
