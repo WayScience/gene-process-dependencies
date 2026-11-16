@@ -62,6 +62,9 @@ from scipy.spatial import cKDTree
 sys.path.insert(0, "../utils")
 from data_loader import load_train_test_data
 
+sys.path.insert(0, "utils")
+from stats import benjamini_hochberg
+
 
 # In[2]:
 
@@ -388,18 +391,6 @@ for dim in pca_dims_for_correlation:
                 "ModelID": model_id, "null_mean_correlation": null_means,
                 "observed_mean_correlation": observed_stat, "p_value": p_value,
             }))
-
-def benjamini_hochberg(p_values):
-    """Benjamini-Hochberg FDR-adjusted q-values for an array of p-values."""
-    p = np.asarray(p_values, dtype=float)
-    n = len(p)
-    order = np.argsort(p)
-    ranked = p[order] * n / (np.arange(n) + 1)
-    q_sorted = np.minimum.accumulate(ranked[::-1])[::-1]
-    q = np.empty(n)
-    q[order] = np.clip(q_sorted, 0, 1)
-    return q
-
 
 proximity_df = pd.DataFrame(proximity_rows)
 # Adjusted within each pca_latent_dim separately: the 8 samples tested at a
