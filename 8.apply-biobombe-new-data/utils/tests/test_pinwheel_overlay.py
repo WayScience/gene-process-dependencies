@@ -55,6 +55,28 @@ def test_plot_overlay_pinwheel_runs_without_error():
     plt.close(fig)
 
 
+def test_top_feature_union_selects_by_magnitude_not_raw_value():
+    # A strongly negative score must be just as selectable as a strongly
+    # positive one - score_col is signed, so sorting by raw value alone
+    # would silently exclude large-magnitude negative hits.
+    metadata_df, scores_df = _synthetic_data()
+    scores_df = scores_df.copy()
+    scores_df.loc[scores_df["feature"] == "f3", "score"] = -10.0  # now the most extreme, despite being negative
+    features = top_feature_union(scores_df, metadata_df, "feature", "score", top_n_per_sample=1, max_features=30)
+    assert "f3" in features, f"expected the large-magnitude negative feature to be selected, got {features}"
+
+
+def test_plot_overlay_pinwheel_plots_magnitude_of_signed_scores():
+    metadata_df, scores_df = _synthetic_data()
+    scores_df = scores_df.copy()
+    scores_df.loc[(scores_df["ModelID"] == "A") & (scores_df["feature"] == "f1"), "score"] = -3.0
+    fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+    plot_overlay_pinwheel(scores_df, metadata_df, "feature", "score", ["f1", "f2", "f3"], "test title", ax)
+    radii = ax.get_lines()[0].get_ydata()
+    assert radii[0] == 3.0, f"expected the negative score to plot as a positive radius, got {radii[0]}"
+    plt.close(fig)
+
+
 def test_plot_overlay_pinwheel_handles_missing_feature():
     # A sample missing one of the shared features should fill with 0, not crash.
     metadata_df, scores_df = _synthetic_data()

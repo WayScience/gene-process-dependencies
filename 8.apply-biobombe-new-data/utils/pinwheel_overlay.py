@@ -9,6 +9,12 @@ its existing single-sample callers in modules 4 and 6.
 
 This is an exploration tool, not a publication figure: legibility and a
 single combined output file matter more than polish.
+
+score_col values are signed (utils/latent_annotation.py's
+compute_and_plot_latent_scores no longer takes abs()): a feature a sample
+sits strongly on the "opposite" side of is just as notable as one it
+sits strongly on the "same" side of, so both top_feature_union and
+plot_overlay_pinwheel below select/plot by magnitude, not raw value.
 """
 
 import numpy as np
@@ -28,9 +34,11 @@ def top_feature_union(scores_df, metadata_df, id_col, score_col, top_n_per_sampl
     union would otherwise be larger.
     """
     model_ids = metadata_df["ModelID"]
+    candidates = scores_df[scores_df["ModelID"].isin(model_ids)].copy()
+    candidates["_abs_score"] = candidates[score_col].abs()
     per_sample_top = (
-        scores_df[scores_df["ModelID"].isin(model_ids)]
-        .sort_values(score_col, ascending=False)
+        candidates
+        .sort_values("_abs_score", ascending=False)
         .groupby("ModelID")
         .head(top_n_per_sample)
     )
@@ -38,13 +46,13 @@ def top_feature_union(scores_df, metadata_df, id_col, score_col, top_n_per_sampl
     if len(feature_union) <= max_features:
         return list(feature_union)
 
-    max_score_by_feature = (
-        scores_df[scores_df[id_col].isin(feature_union)]
-        .groupby(id_col)[score_col]
+    max_abs_score_by_feature = (
+        candidates[candidates[id_col].isin(feature_union)]
+        .groupby(id_col)["_abs_score"]
         .max()
         .sort_values(ascending=False)
     )
-    return list(max_score_by_feature.head(max_features).index)
+    return list(max_abs_score_by_feature.head(max_features).index)
 
 
 def plot_overlay_pinwheel(scores_df, metadata_df, id_col, score_col, feature_subset, title, ax):
@@ -64,7 +72,11 @@ def plot_overlay_pinwheel(scores_df, metadata_df, id_col, score_col, feature_sub
 
     for _, sample in metadata_df.iterrows():
         sample_scores = scores_df[scores_df["ModelID"] == sample["ModelID"]].set_index(id_col)[score_col]
+        # abs(): score_col is signed now, and a polar radius can't be
+        # negative - magnitude is what's plotted, same reasoning as
+        # utils/pinwheels.py's plot_pinwheel.
         radii = sample_scores.reindex(feature_subset).fillna(0.0).to_numpy()
+        radii = np.abs(radii)
         closed_radii = np.append(radii, radii[0])
 
         color = TYPE_COLORS.get(sample["type"], "#7f7f7f")

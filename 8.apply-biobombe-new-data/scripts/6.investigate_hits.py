@@ -63,29 +63,38 @@ print(f"Drugs: {all_drugs_df.shape} ({all_drugs_df['name'].nunique()} unique)")
 
 
 # ### Section A - per-sample top 10 hits
+#
+# "Top" means largest magnitude, not largest raw value: pathway_score is
+# signed (utils/latent_annotation.py no longer takes abs()), so a large
+# negative score is just as notable as a large positive one - sorting by
+# raw value would silently drop every strongly-negative hit.
 
 # In[ ]:
 
 
 top10_pathways_df = (
-    all_pathways_df.sort_values(["ModelID", "pathway_score"], ascending=[True, False])
+    all_pathways_df.assign(_abs_pathway_score=all_pathways_df["pathway_score"].abs())
+    .sort_values(["ModelID", "_abs_pathway_score"], ascending=[True, False])
     .groupby("ModelID")
     .head(10)
+    .drop(columns="_abs_pathway_score")
 )
 top10_pathways_df.to_parquet(results_dir / "NF1_data_top10_pathways_per_sample.parquet", index=False)
-print(top10_pathways_df[["ModelID", "reactome_pathway", "gene_set_library", "nes_score", "pathway_score"]].to_string(index=False))
+print(top10_pathways_df[["ModelID", "reactome_pathway", "gene_set_library", "nes_score", "pathway_score", "n_candidates", "shared_slot_with"]].to_string(index=False))
 
 
 # In[ ]:
 
 
 top10_drugs_df = (
-    all_drugs_df.sort_values(["ModelID", "pathway_score"], ascending=[True, False])
+    all_drugs_df.assign(_abs_pathway_score=all_drugs_df["pathway_score"].abs())
+    .sort_values(["ModelID", "_abs_pathway_score"], ascending=[True, False])
     .groupby("ModelID")
     .head(10)
+    .drop(columns="_abs_pathway_score")
 )
 top10_drugs_df.to_parquet(results_dir / "NF1_data_top10_drugs_per_sample.parquet", index=False)
-print(top10_drugs_df[["ModelID", "name", "pearson_correlation", "pathway_score"]].to_string(index=False))
+print(top10_drugs_df[["ModelID", "name", "pearson_correlation", "pathway_score", "n_candidates", "shared_slot_with"]].to_string(index=False))
 
 
 # ### Section B - consolidated pinwheel visualization
@@ -217,12 +226,21 @@ print(f"Saved p-value calibration QQ plots to {qq_pdf_path}")
 
 # ### Caveats
 #
-# - `pathway_score` for a fixed feature varies across samples only through
-#   `abs(latent_score)` (the feature's own weight is fixed ensemble-wide) -
-#   that's right-skewed and bounded at zero, not symmetric, so treat the
-#   mean differences above as directional signals rather than as if drawn
-#   from a textbook Gaussian null. A second-order concern given the
-#   already-very-low power here, not a blocker.
+# - `pathway_score` is signed (`utils/latent_annotation.py` no longer
+#   takes `abs()` of the new sample's own latent score) - positive means
+#   this sample sits on the side of the latent axis that originally drove
+#   the pathway/drug's association, negative means the opposite side. The
+#   mean differences above can therefore flip sign meaningfully; still
+#   treat them as directional signals, not as drawn from a textbook
+#   Gaussian null, given the already-very-low power here.
+# - Pathway/drug assignment now also reports `n_candidates` (how many
+#   independent ensemble-wide hits corroborated it, not gated on - a
+#   single-hit assignment is weaker evidence than one many hits agree on)
+#   and `shared_slot_with` (whether this pathway/drug's latent slot is
+#   also claimed by an unrelated pathway/drug in a different category,
+#   which are assigned independently) - both carried through from
+#   `5.annotate_latent_scores.py`. Worth checking before leaning on any
+#   single top hit above.
 # - Permutation/rank tests (SAM, Wilcoxon) were considered and rejected:
 #   with n=1 vs n=1 or n=1 vs n=2, there are only 2-3 possible label
 #   permutations - nowhere near enough for a meaningful null distribution.
