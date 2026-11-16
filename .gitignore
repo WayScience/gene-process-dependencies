@@ -8,7 +8,7 @@ __pycache__
 3.run-biobombe/saved_models/
 8.apply-biobombe-new-data/data/*
 !8.apply-biobombe-new-data/data/.gitkeep
-8.apply-biobombe-new-data/visualize/pinwheels/
+8.apply-biobombe-new-data/visualize/
 4.drug-dependency/data/*
 4.drug-dependency/results/combined_latent_drug_correlations.parquet
 .venv
