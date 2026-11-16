@@ -67,6 +67,15 @@ def plot_overlay_pinwheel(scores_df, metadata_df, id_col, score_col, feature_sub
     scores_df: long per-sample scores table with columns [ModelID, id_col, score_col].
     metadata_df: columns [ModelID, SUZ12, NF1, type].
     """
+    if len(feature_subset) == 0:
+        # e.g. finite-score filtering upstream removed every candidate
+        # feature for this family - nothing to plot, but don't crash the
+        # rest of the run (angles[0] below would IndexError on an empty
+        # feature_subset).
+        ax.text(0.5, 0.5, "No features available", ha="center", va="center", transform=ax.transAxes)
+        ax.set_title(title, y=1.12)
+        return
+
     angles = np.linspace(0, 2 * np.pi, len(feature_subset), endpoint=False)
     closed_angles = np.append(angles, angles[0])
 

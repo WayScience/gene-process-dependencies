@@ -57,9 +57,27 @@ visualize_dir.mkdir(parents=True, exist_ok=True)
 
 metadata_df = pd.read_parquet("data/largaespada/NF1_metadata.parquet")
 all_pathways_df = pd.read_parquet(data_results_dir / "NF1_data_all_pathways.parquet")
-all_drugs_df = pd.read_parquet(data_results_dir / "NF1_data_all_drugs.parquet")
-print(f"Pathways: {all_pathways_df.shape} ({all_pathways_df['reactome_pathway'].nunique()} unique)")
-print(f"Drugs: {all_drugs_df.shape} ({all_drugs_df['name'].nunique()} unique)")
+
+# Loaded conditionally, not unconditionally: 5.annotate_latent_scores.py
+# always writes NF1_data_all_drugs.parquet now, but it can be empty (no
+# drug-correlation input available) - drug-only sections below are
+# skipped in that case rather than erroring, so pathway investigation
+# still runs on a drug-free setup.
+all_drugs_path = data_results_dir / "NF1_data_all_drugs.parquet"
+all_drugs_df = pd.read_parquet(all_drugs_path) if all_drugs_path.exists() else pd.DataFrame()
+has_drugs = not all_drugs_df.empty
+
+# A CORUM pathway and a Reactome pathway can share a display name - keyed
+# by gene_set_library + reactome_pathway together wherever features get
+# grouped/merged by identity (below), so the two are never silently
+# treated as one feature.
+all_pathways_df["pathway_feature_key"] = all_pathways_df["gene_set_library"] + ": " + all_pathways_df["reactome_pathway"]
+
+print(f"Pathways: {all_pathways_df.shape} ({all_pathways_df['pathway_feature_key'].nunique()} unique)")
+if has_drugs:
+    print(f"Drugs: {all_drugs_df.shape} ({all_drugs_df['name'].nunique()} unique)")
+else:
+    print(f"Drugs: none available ({all_drugs_path} missing or empty) - drug-only sections below are skipped.")
 
 
 # ### Section A - per-sample top 10 hits
@@ -86,15 +104,18 @@ print(top10_pathways_df[["ModelID", "reactome_pathway", "gene_set_library", "nes
 # In[ ]:
 
 
-top10_drugs_df = (
-    all_drugs_df.assign(_abs_pathway_score=all_drugs_df["pathway_score"].abs())
-    .sort_values(["ModelID", "_abs_pathway_score"], ascending=[True, False])
-    .groupby("ModelID")
-    .head(10)
-    .drop(columns="_abs_pathway_score")
-)
-top10_drugs_df.to_parquet(results_dir / "NF1_data_top10_drugs_per_sample.parquet", index=False)
-print(top10_drugs_df[["ModelID", "name", "pearson_correlation", "pathway_score", "n_candidates", "shared_slot_with"]].to_string(index=False))
+if has_drugs:
+    top10_drugs_df = (
+        all_drugs_df.assign(_abs_pathway_score=all_drugs_df["pathway_score"].abs())
+        .sort_values(["ModelID", "_abs_pathway_score"], ascending=[True, False])
+        .groupby("ModelID")
+        .head(10)
+        .drop(columns="_abs_pathway_score")
+    )
+    top10_drugs_df.to_parquet(results_dir / "NF1_data_top10_drugs_per_sample.parquet", index=False)
+    print(top10_drugs_df[["ModelID", "name", "pearson_correlation", "pathway_score", "n_candidates", "shared_slot_with"]].to_string(index=False))
+else:
+    print("No drug data available - skipping drug top-10 report.")
 
 
 # ### Section B - consolidated pinwheel visualization
@@ -107,21 +128,26 @@ print(top10_drugs_df[["ModelID", "name", "pearson_correlation", "pathway_score",
 # In[ ]:
 
 
-pathway_features = top_feature_union(all_pathways_df, metadata_df, "reactome_pathway", "pathway_score")
-drug_features = top_feature_union(all_drugs_df, metadata_df, "name", "pathway_score")
-print(f"Pinwheel feature counts - pathways: {len(pathway_features)}, drugs: {len(drug_features)}")
+pathway_features = top_feature_union(all_pathways_df, metadata_df, "pathway_feature_key", "pathway_score")
+print(f"Pinwheel feature counts - pathways: {len(pathway_features)}", end="")
+if has_drugs:
+    drug_features = top_feature_union(all_drugs_df, metadata_df, "name", "pathway_score")
+    print(f", drugs: {len(drug_features)}")
+else:
+    print(", drugs: skipped (no drug data available)")
 
 pdf_path = visualize_dir / "NF1_data_pinwheel_overlay_all_samples.pdf"
 with PdfPages(pdf_path) as pdf:
     fig, ax = plt.subplots(figsize=(10, 10), subplot_kw={"projection": "polar"})
-    plot_overlay_pinwheel(all_pathways_df, metadata_df, "reactome_pathway", "pathway_score", pathway_features, "CORUM pathways - all 8 samples", ax)
+    plot_overlay_pinwheel(all_pathways_df, metadata_df, "pathway_feature_key", "pathway_score", pathway_features, "CORUM + Reactome pathways - all 8 samples", ax)
     pdf.savefig(fig, bbox_inches="tight")
     plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(10, 10), subplot_kw={"projection": "polar"})
-    plot_overlay_pinwheel(all_drugs_df, metadata_df, "name", "pathway_score", drug_features, "Drugs - all 8 samples", ax)
-    pdf.savefig(fig, bbox_inches="tight")
-    plt.close(fig)
+    if has_drugs:
+        fig, ax = plt.subplots(figsize=(10, 10), subplot_kw={"projection": "polar"})
+        plot_overlay_pinwheel(all_drugs_df, metadata_df, "name", "pathway_score", drug_features, "Drugs - all 8 samples", ax)
+        pdf.savefig(fig, bbox_inches="tight")
+        plt.close(fig)
 
 print(f"Saved combined pinwheel figure to {pdf_path}")
 
@@ -159,7 +185,7 @@ print(f"Replicate (n>=2) groups used to fit the shared prior: {replicate_groups}
 # In[ ]:
 
 
-differential_pathways_df = differential_test(all_pathways_df, "reactome_pathway", "pathway_score", comparisons, replicate_groups)
+differential_pathways_df = differential_test(all_pathways_df, "pathway_feature_key", "pathway_score", comparisons, replicate_groups)
 differential_pathways_df.to_parquet(results_dir / "NF1_data_differential_pathways_by_mutation_status.parquet", index=False)
 print(f"Differential pathway results: {differential_pathways_df.shape}")
 
@@ -171,13 +197,17 @@ for (stratum, marker), group in differential_pathways_df.groupby(["stratum", "ma
 # In[ ]:
 
 
-differential_drugs_df = differential_test(all_drugs_df, "name", "pathway_score", comparisons, replicate_groups)
-differential_drugs_df.to_parquet(results_dir / "NF1_data_differential_drugs_by_mutation_status.parquet", index=False)
-print(f"Differential drug results: {differential_drugs_df.shape}")
+if has_drugs:
+    differential_drugs_df = differential_test(all_drugs_df, "name", "pathway_score", comparisons, replicate_groups)
+    differential_drugs_df.to_parquet(results_dir / "NF1_data_differential_drugs_by_mutation_status.parquet", index=False)
+    print(f"Differential drug results: {differential_drugs_df.shape}")
 
-for (stratum, marker), group in differential_drugs_df.groupby(["stratum", "marker"], sort=False):
-    print(f"\nTop drugs, {stratum} x {marker} (d0=4):")
-    print(group.sort_values("q_d0_4").head(10)[["feature", "mean_pos", "mean_neg", "mean_diff", "t_d0_4", "p_d0_4", "q_d0_4"]].to_string(index=False))
+    for (stratum, marker), group in differential_drugs_df.groupby(["stratum", "marker"], sort=False):
+        print(f"\nTop drugs, {stratum} x {marker} (d0=4):")
+        print(group.sort_values("q_d0_4").head(10)[["feature", "mean_pos", "mean_neg", "mean_diff", "t_d0_4", "p_d0_4", "q_d0_4"]].to_string(index=False))
+else:
+    differential_drugs_df = pd.DataFrame()
+    print("No drug data available - skipping drug differential test.")
 
 
 # ### Section D - p-value calibration check (QQ plot)
@@ -205,21 +235,22 @@ pathway_p_by_comparison = {
 drug_p_by_comparison = {
     f"{stratum} x {marker}": group["p_d0_4"]
     for (stratum, marker), group in differential_drugs_df.groupby(["stratum", "marker"], sort=False)
-}
+} if has_drugs else {}
 
 qq_pdf_path = visualize_dir / "NF1_data_qq_plot_differential_pvalues.pdf"
 with PdfPages(qq_pdf_path) as pdf:
     fig, ax = plt.subplots(figsize=(6, 6))
     qq_plot_pvalues(pathway_p_by_comparison, ax)
-    ax.set_title("CORUM pathways - p-value calibration (d0=4)")
+    ax.set_title("CORUM + Reactome pathways - p-value calibration (d0=4)")
     pdf.savefig(fig, bbox_inches="tight")
     plt.close(fig)
 
-    fig, ax = plt.subplots(figsize=(6, 6))
-    qq_plot_pvalues(drug_p_by_comparison, ax)
-    ax.set_title("Drugs - p-value calibration (d0=4)")
-    pdf.savefig(fig, bbox_inches="tight")
-    plt.close(fig)
+    if has_drugs:
+        fig, ax = plt.subplots(figsize=(6, 6))
+        qq_plot_pvalues(drug_p_by_comparison, ax)
+        ax.set_title("Drugs - p-value calibration (d0=4)")
+        pdf.savefig(fig, bbox_inches="tight")
+        plt.close(fig)
 
 print(f"Saved p-value calibration QQ plots to {qq_pdf_path}")
 

@@ -78,13 +78,42 @@ def test_moderated_t_test_vectorized_matches_scalar():
         assert np.isclose(p_vec[i], p_i)
 
 
+def test_moderated_t_test_zero_variance_gives_zero_not_nan():
+    # Both groups identical (zero pooled variance) AND a zero shared prior
+    # (s0_sq=0): with no variance evidence anywhere, t must be 0 (no
+    # evidence of a difference), not NaN from a literal 0/0 division.
+    group1 = np.array([2.0, 2.0])
+    group2 = np.array([2.0, 2.0])
+    t, df, p = moderated_t_test(group1, group2, prior_d0=4, prior_s0_sq=0.0)
+    assert t == 0.0, f"expected t=0.0 for zero variance and zero mean_diff, got {t}"
+    assert np.isfinite(p), f"expected a finite p-value, got {p}"
+
+
+def test_moderated_t_test_zero_variance_does_not_corrupt_other_features_bh():
+    # A batch with one zero-variance/zero-diff feature (feature 0) and two
+    # well-separated, clearly-significant features (1, 2). Before the fix,
+    # feature 0's NaN t/p-value would propagate through
+    # benjamini_hochberg's sort-based reverse-cummin into every other
+    # feature's q-value, not just its own.
+    # Features 1/2 need real (nonzero) within-group variance of their own,
+    # not just a big mean_diff - otherwise their own pooled variance is
+    # also exactly 0 and they'd trivially get t=0 too, defeating the point.
+    group1 = np.array([[2.0, 2.0], [100.0, 105.0], [100.0, 105.0]])
+    group2 = np.array([[2.0, 2.0], [0.0, 5.0], [0.0, 5.0]])
+    t, df, p = moderated_t_test(group1, group2, prior_d0=4, prior_s0_sq=0.0)
+    assert np.all(np.isfinite(p)), f"expected every p-value finite, got {p}"
+    q = benjamini_hochberg(p)
+    assert np.all(np.isfinite(q)), f"a NaN p-value must not propagate into other features' q-values, got {q}"
+    assert q[1] < 0.05 and q[2] < 0.05, f"the two clearly-significant features should still show up as such, got {q}"
+
+
 def test_fit_shared_prior_pools_median():
     # Both arrays at df=1, so the bias correction factor is identical for
     # both and the relative pooling behaves like a plain median of the
     # corrected values.
     variance_arrays = [np.array([1.0, 2.0, 3.0]), np.array([2.0, 3.0, 4.0, 100.0])]
     d0, s0_sq = fit_shared_prior(variance_arrays, dfs=[1, 1], d0=4)
-    correction = stats.chi2.ppf(0.5, 1)
+    correction = 1 * stats.chi2.ppf(0.5, 1)
     expected_median = np.median([1.0, 2.0, 3.0, 2.0, 3.0, 4.0, 100.0]) / correction
     assert d0 == 4
     assert np.isclose(s0_sq, expected_median), f"expected {expected_median}, got {s0_sq}"
@@ -105,6 +134,29 @@ def test_fit_shared_prior_corrects_low_df_bias():
     )
     raw_median = np.median(draws)
     assert s0_sq > raw_median, "corrected estimate should be larger than the raw (biased-low) median"
+
+
+def test_fit_shared_prior_corrects_low_df_bias_at_df_2():
+    # Regression test for a real bug: the correction factor needs
+    # median(S^2) * df / chi2.ppf(0.5, df), not just / chi2.ppf(0.5, df).
+    # At df=1 that missing "* df" factor is 1 and invisible (the test
+    # above can't catch it) - at df=2 it isn't, and the uncorrected
+    # version would silently estimate half the true variance.
+    rng = np.random.RandomState(3)
+    true_variance = 10.0
+    df = 2
+    # A pooled sample variance S^2 with df degrees of freedom is
+    # distributed as (true_variance / df) * chi2(df), not true_variance *
+    # chi2(df) - the division by df here matters for the simulation to be
+    # realistic (confirmed empirically before relying on it: the buggy,
+    # pre-fix formula recovers ~5.0, almost exactly half of 10.0, on this
+    # same simulation).
+    draws = (true_variance / df) * rng.chisquare(df=df, size=5000)
+    _, s0_sq = fit_shared_prior([draws], dfs=[df], d0=4)
+    assert abs(s0_sq - true_variance) / true_variance < 0.1, (
+        f"expected corrected s0_sq near the true variance ({true_variance}), got {s0_sq} "
+        "(got ~half the true variance? the '* df' factor is probably missing again)"
+    )
 
 
 def test_pooled_variance_zero_for_single_observation_groups():

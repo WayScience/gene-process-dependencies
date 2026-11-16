@@ -107,19 +107,23 @@ def fit_shared_prior(variance_arrays, dfs, d0=4):
     array's matching degrees of freedom in dfs.
 
     s0_sq is the median of all pooled variances across every array and
-    feature, after a bias correction: a single ddof=1 variance estimate is
-    distributed as (true_variance / df) * chi2(df), and chi2 is
-    right-skewed, so its MEDIAN sits below its MEAN (e.g. ~0.455x the true
-    variance at df=1, via chi2.ppf(0.5, 1)) - taking a raw median of many
-    such low-df estimates therefore systematically underestimates the
-    shared variance, which silently inflates every downstream moderated
-    t-statistic (the shrunk variance in its denominator is too small).
-    Each array is divided by chi2.ppf(0.5, its own df) before pooling to
-    correct for this - a closed-form correction, not a distributional fit,
-    so it doesn't require the trigamma-based machinery this module's
-    docstring explains was deliberately avoided for d0.
+    feature, after a bias correction: a ddof=1 variance estimate with df
+    degrees of freedom is distributed as (true_variance / df) * chi2(df),
+    and chi2 is right-skewed, so its MEDIAN sits below its MEAN (e.g.
+    ~0.455x the true variance at df=1, via chi2.ppf(0.5, 1)) - taking a
+    raw median of many such low-df estimates therefore systematically
+    underestimates the shared variance, which silently inflates every
+    downstream moderated t-statistic (the shrunk variance in its
+    denominator is too small). Recovering true_variance from median(S^2)
+    needs median(S^2) * df / chi2.ppf(0.5, df) - at df=1 that's a no-op
+    beyond the divide (df=1), which is why the divide-only version of this
+    passed its own df=1-only tests but was wrong for any df>1: it was
+    silently estimating half the true variance at df=2, for example. A
+    closed-form correction, not a distributional fit, so it doesn't
+    require the trigamma-based machinery this module's docstring explains
+    was deliberately avoided for d0.
     """
-    corrected = [np.ravel(v) / stats.chi2.ppf(0.5, df) for v, df in zip(variance_arrays, dfs)]
+    corrected = [np.ravel(v) * df / stats.chi2.ppf(0.5, df) for v, df in zip(variance_arrays, dfs, strict=True)]
     all_variances = np.concatenate(corrected)
     s0_sq = np.median(all_variances)
     return d0, s0_sq
@@ -137,6 +141,17 @@ def moderated_t_test(group1, group2, prior_d0, prior_s0_sq):
     variance collapses entirely to the prior s0_sq, rather than producing
     NaN - this is the point of the shrinkage, not an edge case to special-case
     away.
+
+    A feature with truly zero shrunk variance (prior_s0_sq itself is 0
+    AND this feature's own pooled variance is 0) gets t=0, not NaN/inf:
+    with literally no variance evidence anywhere to stand on, there's
+    nothing to divide mean_diff by, and reporting it as "no evidence of a
+    difference" is the conservative, defensible reading - not "infinitely
+    significant" (if mean_diff != 0) or "undefined" (if mean_diff == 0,
+    which a plain 0/0 division would otherwise silently turn into a NaN
+    that corrupts OTHER features' q-values too, since
+    benjamini_hochberg's sort-based implementation doesn't isolate NaN to
+    the row that produced it).
     """
     single_feature = np.ndim(group1) == 1
     group1 = np.atleast_2d(group1)
@@ -148,7 +163,8 @@ def moderated_t_test(group1, group2, prior_d0, prior_s0_sq):
 
     mean_diff = np.mean(group1, axis=-1) - np.mean(group2, axis=-1)
     standard_error = np.sqrt(s_shrunk_sq * (1 / n1 + 1 / n2))
-    t_statistic = mean_diff / standard_error
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t_statistic = np.where(standard_error > 0, mean_diff / standard_error, 0.0)
     moderated_df = prior_d0 + df_i
     p_value = 2 * stats.t.sf(np.abs(t_statistic), df=moderated_df)
 

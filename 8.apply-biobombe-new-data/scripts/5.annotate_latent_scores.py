@@ -222,6 +222,12 @@ else:
 # introduced here), and any downstream variance-based comparison would be
 # corrupted by one `inf`/missing value - better to drop those features now,
 # explicitly, than silently skip over them later.
+#
+# Always written, even when empty: if an earlier run produced
+# NF1_data_all_drugs.parquet (say) and this run has no drug-correlation
+# input to work with, skipping the write here would leave that stale file
+# in place, and notebook 6 would silently read it as if it were this
+# run's result.
 
 # In[ ]:
 
@@ -243,12 +249,16 @@ def _complete_finite_features(df, group_cols):
 if not pathway_results_df.empty:
     complete_pathway_df, n_dropped = _complete_finite_features(pathway_results_df, ["reactome_pathway", "gene_set_library"])
     print(f"Pathways dropped for an inf/missing score in at least one sample: {n_dropped}")
-    complete_pathway_df.to_parquet(data_results_dir / "NF1_data_all_pathways.parquet", index=False)
+else:
+    complete_pathway_df = pathway_results_df
+complete_pathway_df.to_parquet(data_results_dir / "NF1_data_all_pathways.parquet", index=False)
 
 if not drug_results_df.empty:
     complete_drug_df, n_dropped = _complete_finite_features(drug_results_df, ["name"])
     print(f"Drugs dropped for an inf/missing score in at least one sample: {n_dropped}")
-    complete_drug_df.to_parquet(data_results_dir / "NF1_data_all_drugs.parquet", index=False)
+else:
+    complete_drug_df = drug_results_df
+complete_drug_df.to_parquet(data_results_dir / "NF1_data_all_drugs.parquet", index=False)
 
 
 # ### Save top associations per sample
@@ -283,7 +293,9 @@ if not drug_results_df.empty:
         .drop(columns="_abs_pathway_score")
     )
     drug_results_df = drug_results_df.drop(columns="_abs_pathway_score")
-    top_drugs_per_sample.to_parquet(data_results_dir / "NF1_data_top_drugs.parquet", index=False)
+else:
+    top_drugs_per_sample = drug_results_df
+top_drugs_per_sample.to_parquet(data_results_dir / "NF1_data_top_drugs.parquet", index=False)
 
 print(f"Saved annotated results to {data_results_dir}")
 

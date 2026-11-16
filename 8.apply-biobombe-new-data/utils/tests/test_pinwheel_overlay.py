@@ -77,6 +77,16 @@ def test_plot_overlay_pinwheel_plots_magnitude_of_signed_scores():
     plt.close(fig)
 
 
+def test_plot_overlay_pinwheel_handles_empty_feature_subset():
+    # An empty feature_subset (e.g. every candidate feature was removed by
+    # finite-score filtering upstream) must not crash on angles[0].
+    metadata_df, scores_df = _synthetic_data()
+    fig, ax = plt.subplots(subplot_kw={"projection": "polar"})
+    plot_overlay_pinwheel(scores_df, metadata_df, "feature", "score", [], "test title", ax)
+    assert len(ax.get_lines()) == 0
+    plt.close(fig)
+
+
 def test_plot_overlay_pinwheel_handles_missing_feature():
     # A sample missing one of the shared features should fill with 0, not crash.
     metadata_df, scores_df = _synthetic_data()
