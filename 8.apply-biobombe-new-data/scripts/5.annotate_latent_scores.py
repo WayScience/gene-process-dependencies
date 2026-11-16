@@ -18,6 +18,7 @@ import json
 import pathlib
 import sys
 
+import numpy as np
 import pandas as pd
 
 sys.path.insert(0, "../utils/")
@@ -163,6 +164,46 @@ else:
         f"{drug_correlation_path} not found — skipping drug annotation. "
         "Run 4.drug-dependency/scripts/5.drug_latent_dim_correlation.py first to enable it."
     )
+
+
+# ### Save the full per-sample tables, not just the top hits
+#
+# Notebook 6 needs every sample's score for every assigned pathway/drug (to
+# compare samples feature-by-feature), not just each sample's own top 20 -
+# so the full tables are persisted here rather than only existing as
+# in-memory variables during this run. Restricted to features with a
+# finite score for every sample: a handful of CORUM pathways have an
+# `inf` NES score from GSEA itself (an upstream data-quality issue, not
+# introduced here), and any downstream variance-based comparison would be
+# corrupted by one `inf`/missing value - better to drop those features now,
+# explicitly, than silently skip over them later.
+
+# In[ ]:
+
+
+n_samples = combined_latent_df["ModelID"].nunique()
+
+
+def _complete_finite_features(df, group_cols):
+    """Rows for features (identified by group_cols) with a finite
+    pathway_score for every one of the n_samples samples."""
+    finite_df = df[np.isfinite(df["pathway_score"])]
+    coverage = finite_df.groupby(group_cols)["ModelID"].transform("nunique")
+    complete_df = finite_df[coverage == n_samples]
+    n_total_features = df[group_cols].drop_duplicates().shape[0]
+    n_complete_features = complete_df[group_cols].drop_duplicates().shape[0]
+    return complete_df, n_total_features - n_complete_features
+
+
+if not pathway_results_df.empty:
+    complete_pathway_df, n_dropped = _complete_finite_features(pathway_results_df, ["reactome_pathway", "gene_set_library"])
+    print(f"Pathways dropped for an inf/missing score in at least one sample: {n_dropped}")
+    complete_pathway_df.to_parquet(data_results_dir / "NF1_data_all_pathways.parquet", index=False)
+
+if not drug_results_df.empty:
+    complete_drug_df, n_dropped = _complete_finite_features(drug_results_df, ["name"])
+    print(f"Drugs dropped for an inf/missing score in at least one sample: {n_dropped}")
+    complete_drug_df.to_parquet(data_results_dir / "NF1_data_all_drugs.parquet", index=False)
 
 
 # ### Save top associations per sample
