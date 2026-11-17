@@ -96,12 +96,21 @@ def perform_gsea(weights_df: pd.DataFrame, model_name: str, num_components: int,
         gene_signature = weights_df[['genes', col]]
         if gene_signature.shape[0] > 0:
             try:
-                # processes=4: restored now that the module-level
-                # OMP/OPENBLAS/MKL thread caps above remove the actual fork
-                # deadlock mechanism (see that comment) - processes=1 was a
-                # ~7x slower workaround (measured: 2.83s vs 0.39s per real
-                # signature) that only avoided the symptom, not the cause.
-                gsea_result = blitz.gsea(gene_signature, library, seed=seed, processes=4)
+                # processes=1: the BLAS thread caps above do fix the
+                # fork+OpenBLAS deadlock, but processes=4 hit a second,
+                # independent multiprocessing failure mode - a degenerate
+                # signature's scipy.stats.FitDataError raised inside a
+                # worker crashes the Pool's internal result-handling
+                # thread while trying to pickle it back to the parent
+                # (FitDataError.__init__ needs lower/upper args the
+                # default pickling path doesn't supply), which then hangs
+                # the main process waiting on a result that never arrives.
+                # processes=1 never forks or pickles exceptions across a
+                # process boundary at all, so this can't happen - slower
+                # (~7x per call) but the only mode with zero hangs in ~11
+                # hours of real running, including a clean, caught
+                # degenerate-signature skip.
+                gsea_result = blitz.gsea(gene_signature, library, seed=seed, processes=1)
                 gsea_result = gsea_result.reset_index()
                 for _, pathway_result in gsea_result.iterrows():
                     result_row = {
