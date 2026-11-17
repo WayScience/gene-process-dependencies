@@ -100,6 +100,60 @@ def test_flag_shared_latent_slots_detects_collision():
     assert drug_out.loc["DrugW", "shared_slot_with"] == []
 
 
+def test_filter_significant_candidates_excludes_nan_pvalue_from_family():
+    # A NaN p-value (e.g. a drug with zero-variance response, whose
+    # correlation/p-value is undefined) must not poison every other
+    # candidate's q-value - BH's cumulative-minimum step propagates a
+    # single NaN to the whole family otherwise, which would silently drop
+    # every real candidate, not just the undefined one.
+    df = pd.DataFrame({
+        "p_value": [0.001, 0.02, np.nan, 0.5],
+        "shuffled": [False, False, False, False],
+    })
+    result = filter_significant_candidates(df, extra_mask=~df["shuffled"])
+    assert not result["p_value"].isna().any(), "the NaN row itself must be excluded, not assigned a q-value"
+    assert set(result["p_value"]) == {0.001, 0.02}, f"got {result['p_value'].tolist()}"
+
+
+def test_assign_unique_latent_dims_does_not_mutate_signed_score():
+    # A negative GSEA score must survive assignment unchanged - ranking is
+    # by magnitude internally, but score_col itself must never be abs()'d
+    # in place, since compute_and_plot_latent_scores multiplies it into a
+    # signed pathway_score downstream.
+    df = pd.DataFrame([
+        {"pathway": "P1", "nes_score": -5.0, "z": 1, "model": "m", "full_model_z": 10, "init": 0},
+    ])
+    result = assign_unique_latent_dims(df, score_col="nes_score", target_col="pathway").set_index("pathway")
+    assert result.loc["P1", "nes_score"] == -5.0, f"expected unmutated -5.0, got {result.loc['P1', 'nes_score']}"
+
+
+def test_assign_unique_latent_dims_drug_priority_strongest_correlation_wins_contested_slot():
+    # Drugs A (-0.9) and B (-0.2) both have their only candidate on the
+    # identical slot. A's correlation is far stronger (more negative), so
+    # A must be processed first and claim it, leaving B unassigned. Under
+    # the pre-fix reverse=True (applied regardless of is_drug), B would be
+    # processed first instead - this directly tests that regression.
+    df = pd.DataFrame([
+        {"drug": "A", "pearson_correlation": -0.9, "z": 1, "model": "m", "full_model_z": 10, "init": 0},
+        {"drug": "B", "pearson_correlation": -0.2, "z": 1, "model": "m", "full_model_z": 10, "init": 0},
+    ])
+    result = assign_unique_latent_dims(df, score_col="pearson_correlation", target_col="drug")
+    assert set(result["drug"]) == {"A"}, f"expected only A (strongest correlation) to win the contested slot, got {result['drug'].tolist()}"
+    assert result.set_index("drug").loc["A", "pearson_correlation"] == -0.9
+
+
+def test_assign_unique_latent_dims_empty_result_preserves_schema():
+    # When nothing survives to be assigned (e.g. every candidate was
+    # filtered out upstream), the result must still carry the input's
+    # columns plus n_candidates/assignment_score - callers (scoring,
+    # export) select columns by name unconditionally, empty or not. A bare
+    # pd.DataFrame([]) has zero columns and breaks that.
+    df = pd.DataFrame(columns=["pathway", "nes_score", "z", "model", "full_model_z", "init"])
+    result = assign_unique_latent_dims(df, score_col="nes_score", target_col="pathway")
+    assert result.empty
+    assert set(result.columns) == set(df.columns) | {"n_candidates", "assignment_score"}, f"got columns {list(result.columns)}"
+
+
 def test_compute_and_plot_latent_scores_is_signed_not_abs():
     # latent_score=-2, fixed score=3: abs()'d (old) would give +6;
     # signed (new) must give -6.

@@ -53,6 +53,12 @@ def filter_significant_candidates(df, p_col="p_value", q_threshold=0.05, extra_m
     Adds a "q_value" column to the returned rows.
     """
     candidates = df[extra_mask] if extra_mask is not None else df
+    # A non-finite p-value (e.g. a drug with zero-variance response across
+    # the shared cell lines, where the correlation/t-stat is undefined) is
+    # not a valid test and must not enter the correction family - BH's
+    # cumulative-minimum step propagates a single NaN to every q-value in
+    # the family, which would otherwise silently drop every candidate.
+    candidates = candidates[np.isfinite(candidates[p_col].to_numpy(dtype=float))]
     result = candidates.copy()
     result["q_value"] = benjamini_hochberg(result[p_col].to_numpy())
     result = result[result["q_value"] <= q_threshold]
@@ -184,15 +190,23 @@ def assign_unique_latent_dims(df, score_col, target_col, latent_col="z"):
       count, not gated on) and assignment_score (the robustness score
       it was ranked by).
     """
+    original_columns = list(df.columns)
+
     # Check to see if score is pearson correlation or not, so the ordering is the correct direction. GSEA results are non-directional, pearson correlation is
-    if score_col != "pearson_correlation":
-        df[score_col] = df[score_col].abs()
-        is_drug = False
-    else:
-        is_drug = True
+    is_drug = score_col == "pearson_correlation"
+
+    # Ranking/sorting is by magnitude only, via a separate column - never by
+    # mutating score_col itself. score_col is signed and that sign is real
+    # information consumed downstream (compute_and_plot_latent_scores
+    # multiplies it into pathway_score); abs()-ing it in place here used to
+    # silently flip the sign of the final score for any negative GSEA/drug
+    # hit. "Most important" is highest abs() for GSEA, most negative
+    # (smallest raw value) for pearson correlation.
+    df = df.copy()
+    df["_rank_key"] = df[score_col].abs() if not is_drug else df[score_col]
 
     # Sort so that the most important values are first (highest abs for GSEA, most negative for pearson correlation)
-    df_sorted = df.sort_values(score_col, ascending=is_drug).copy()
+    df_sorted = df.sort_values("_rank_key", ascending=is_drug).copy()
 
     # Track used latent dimensions and their associated pathways
     used_latents = {}
@@ -201,10 +215,15 @@ def assign_unique_latent_dims(df, score_col, target_col, latent_col="z"):
     # Group by pathway or drug to process each one sequentially
     grouped = df_sorted.groupby(target_col)
 
+    # Process the most important groups first: highest abs score for GSEA
+    # (reverse=True, since is_drug=False), most negative correlation for
+    # drugs (reverse=False, since ascending=True on _rank_key already put
+    # the most negative first - reverse=True would undo that and process
+    # the weakest drug correlations first instead).
     sorted_groups = sorted(
         grouped,
-        key=lambda group: _top_k_median(group[1][score_col].tolist(), ascending=is_drug),
-        reverse=True,
+        key=lambda group: _top_k_median(group[1]["_rank_key"].tolist(), ascending=is_drug),
+        reverse=not is_drug,
     )
 
     for pathway, group in sorted_groups:
@@ -218,10 +237,12 @@ def assign_unique_latent_dims(df, score_col, target_col, latent_col="z"):
             print(f"No unused latent dimensions left for pathway {pathway}.")
             continue  # Skip to the next pathway
 
-        # Sort by GSEA score (descending) to pick the top available latent dimension
-        best_latent = available_latents.sort_values(by=score_col, ascending=is_drug).head(1).iloc[0].copy()
+        # Sort by rank magnitude (descending for GSEA, ascending for drugs)
+        # to pick the top available latent dimension - score_col itself
+        # stays untouched/signed throughout.
+        best_latent = available_latents.sort_values(by="_rank_key", ascending=is_drug).head(1).iloc[0].copy()
         best_latent["n_candidates"] = len(group)
-        best_latent["assignment_score"] = _top_k_median(group[score_col].tolist(), ascending=is_drug)
+        best_latent["assignment_score"] = _top_k_median(group["_rank_key"].tolist(), ascending=is_drug)
 
         # Record the assignment
         latent_key = (best_latent[latent_col], best_latent['model'], best_latent['full_model_z'], best_latent['init'])
@@ -230,8 +251,16 @@ def assign_unique_latent_dims(df, score_col, target_col, latent_col="z"):
 
         print(f"Assigned latent dimension {best_latent[latent_col]} for model {best_latent['model']}, {best_latent['full_model_z']}, init {best_latent['init']} to pathway {pathway}.")
 
-    # Convert list of assigned rows back to DataFrame
-    return pd.DataFrame(assigned_rows)
+    # Convert list of assigned rows back to DataFrame. When nothing survives
+    # assignment (e.g. every candidate was filtered out upstream), still
+    # return the input's columns plus n_candidates/assignment_score rather
+    # than a zero-column frame - callers (scoring, export) select columns by
+    # name on the result unconditionally, empty or not.
+    if assigned_rows:
+        result = pd.DataFrame(assigned_rows)
+    else:
+        result = pd.DataFrame(columns=original_columns + ["n_candidates", "assignment_score"])
+    return result.drop(columns=["_rank_key"], errors="ignore")
 
 
 def flag_shared_latent_slots(categories, latent_col="z"):

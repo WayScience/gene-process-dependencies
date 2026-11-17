@@ -20,7 +20,7 @@ sys.path.append("../4.drug-dependency")
 
 # Import local modules
 from data_loader import load_model_data
-from pinwheels import compute_and_plot_latent_scores, assign_unique_latent_dims
+from latent_annotation import compute_and_plot_latent_scores, assign_unique_latent_dims
 from model_utils import extract_latent_dims
 from utils import load_utils
 

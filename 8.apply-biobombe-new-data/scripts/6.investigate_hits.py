@@ -112,7 +112,14 @@ if has_drugs:
         .head(10)
         .drop(columns="_abs_pathway_score")
     )
-    top10_drugs_df.to_parquet(results_dir / "NF1_data_top10_drugs_per_sample.parquet", index=False)
+else:
+    # all_drugs_df is already an empty-but-schema-correct frame (module 5
+    # always writes it, even with zero rows) - write it as-is rather than
+    # leaving a prior run's top10 report sitting in the output directory
+    # looking current.
+    top10_drugs_df = all_drugs_df
+top10_drugs_df.to_parquet(results_dir / "NF1_data_top10_drugs_per_sample.parquet", index=False)
+if has_drugs:
     print(top10_drugs_df[["ModelID", "name", "pearson_correlation", "pathway_score", "n_candidates", "shared_slot_with"]].to_string(index=False))
 else:
     print("No drug data available - skipping drug top-10 report.")
@@ -197,16 +204,20 @@ for (stratum, marker), group in differential_pathways_df.groupby(["stratum", "ma
 # In[ ]:
 
 
+# all_drugs_df is empty but schema-correct when has_drugs is False;
+# differential_test handles an empty scores_df fine (every intermediate
+# array is just zero-length) and returns a correctly-columned, zero-row
+# frame - write that instead of leaving a prior run's differential report
+# on disk looking current.
+differential_drugs_df = differential_test(all_drugs_df, "name", "pathway_score", comparisons, replicate_groups)
+differential_drugs_df.to_parquet(results_dir / "NF1_data_differential_drugs_by_mutation_status.parquet", index=False)
 if has_drugs:
-    differential_drugs_df = differential_test(all_drugs_df, "name", "pathway_score", comparisons, replicate_groups)
-    differential_drugs_df.to_parquet(results_dir / "NF1_data_differential_drugs_by_mutation_status.parquet", index=False)
     print(f"Differential drug results: {differential_drugs_df.shape}")
 
     for (stratum, marker), group in differential_drugs_df.groupby(["stratum", "marker"], sort=False):
         print(f"\nTop drugs, {stratum} x {marker} (d0=4):")
         print(group.sort_values("q_d0_4").head(10)[["feature", "mean_pos", "mean_neg", "mean_diff", "t_d0_4", "p_d0_4", "q_d0_4"]].to_string(index=False))
 else:
-    differential_drugs_df = pd.DataFrame()
     print("No drug data available - skipping drug differential test.")
 
 

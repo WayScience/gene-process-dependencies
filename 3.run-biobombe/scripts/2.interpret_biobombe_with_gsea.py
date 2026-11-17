@@ -80,7 +80,13 @@ def perform_gsea(weights_df: pd.DataFrame, model_name: str, num_components: int,
         gene_signature = weights_df[['genes', col]]
         if gene_signature.shape[0] > 0:
             try:
-                gsea_result = blitz.gsea(gene_signature, library, seed=seed)
+                # processes=1: blitz.gsea() otherwise spins up its own
+                # multiprocessing.Pool(processes=4) on every single call (once
+                # per latent dim, per model - thousands of times across a full
+                # run). Repeated Pool creation/teardown at that volume is what
+                # deadlocked a prior run partway through, with zero progress
+                # for 8+ hours. Single-process is slower per call but reliable.
+                gsea_result = blitz.gsea(gene_signature, library, seed=seed, processes=1)
                 gsea_result = gsea_result.reset_index()
                 for _, pathway_result in gsea_result.iterrows():
                     result_row = {
