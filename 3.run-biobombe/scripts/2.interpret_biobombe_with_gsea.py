@@ -8,6 +8,22 @@
 # In[1]:
 
 
+import os
+
+# Must be set before numpy (and anything importing it, e.g. blitzgsea) is
+# imported - OpenBLAS reads these at load time. Without this, OpenBLAS runs
+# its own multi-threaded pool by default; forking a multiprocessing.Pool
+# (which blitz.gsea() does on every single call, ~20000 times across a full
+# run) while that thread pool is active is a well-documented NumPy/OpenBLAS
+# fork-safety deadlock - a BLAS worker thread holding an internal mutex
+# doesn't survive fork(), and the lock comes across to the child already
+# held, forever. This is what hung a prior run solid for 8+ hours with zero
+# progress. Capping every BLAS backend to 1 thread removes the thread pool
+# that mechanism needs, rather than just making the race rarer.
+os.environ.setdefault("OMP_NUM_THREADS", "1")
+os.environ.setdefault("OPENBLAS_NUM_THREADS", "1")
+os.environ.setdefault("MKL_NUM_THREADS", "1")
+
 import joblib
 import pandas as pd
 import blitzgsea as blitz
@@ -80,13 +96,12 @@ def perform_gsea(weights_df: pd.DataFrame, model_name: str, num_components: int,
         gene_signature = weights_df[['genes', col]]
         if gene_signature.shape[0] > 0:
             try:
-                # processes=1: blitz.gsea() otherwise spins up its own
-                # multiprocessing.Pool(processes=4) on every single call (once
-                # per latent dim, per model - thousands of times across a full
-                # run). Repeated Pool creation/teardown at that volume is what
-                # deadlocked a prior run partway through, with zero progress
-                # for 8+ hours. Single-process is slower per call but reliable.
-                gsea_result = blitz.gsea(gene_signature, library, seed=seed, processes=1)
+                # processes=4: restored now that the module-level
+                # OMP/OPENBLAS/MKL thread caps above remove the actual fork
+                # deadlock mechanism (see that comment) - processes=1 was a
+                # ~7x slower workaround (measured: 2.83s vs 0.39s per real
+                # signature) that only avoided the symptom, not the cause.
+                gsea_result = blitz.gsea(gene_signature, library, seed=seed, processes=4)
                 gsea_result = gsea_result.reset_index()
                 for _, pathway_result in gsea_result.iterrows():
                     result_row = {
