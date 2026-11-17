@@ -103,8 +103,16 @@ def perform_gsea(weights_df: pd.DataFrame, model_name: str, num_components: int,
                     }
                     gsea_results.append(result_row)
 
-            except ZeroDivisionError:
-                print(f"Skipping GSEA for {col} due to zero division error.")
+            except (ZeroDivisionError, ValueError) as e:
+                # A degenerate signature (e.g. an NMF component where the
+                # ranked weights are too uniform/constant for blitzgsea's
+                # internal null-distribution calibration) can fail deep
+                # inside blitzgsea as a ValueError (scipy's FitDataError is
+                # a ValueError subclass) rather than the ZeroDivisionError
+                # this already handled - observed crashing the whole
+                # Reactome run partway through on nmf_latent_dims_40. Skip
+                # just this one column/model combination instead.
+                print(f"Skipping GSEA for {model_name} init {init} dim {col} due to {type(e).__name__}: {e}")
 
     gsea_results_df = pd.DataFrame(gsea_results)
     return gsea_results_df
