@@ -15,12 +15,18 @@
 
 ## Goal
 
-Precision oncology tries to match a drug to a tumor's genetics, but today that benefits fewer than 10% of cancer patients — in large part because it searches for single-gene drug targets, and only about 15% of human proteins are even considered druggable. The Cancer Dependency Map (DepMap) expanded that search by mapping which single genes cancer cells depend on for survival, across hundreds of cell lines and dozens of cancer types. But a gene rarely acts alone: cancer is driven by coordinated, multi-gene *processes* — signaling pathways, protein complexes, metabolic networks — not single genes in isolation. PARP inhibitors (synthetic lethality in DNA damage repair) and immune checkpoint blockade are proof that targeting a process, not a single gene, can work as a therapeutic strategy.
+Precision oncology tries to match a drug to a tumor's genetics, but today that benefits fewer than 10% of cancer patients — in large part because it searches for single-gene drug targets, and only about 15% of human proteins are even considered druggable.
+The Cancer Dependency Map (DepMap) expanded that search by mapping which single genes cancer cells depend on for survival, across hundreds of cell lines and dozens of cancer types.
+But a gene rarely acts alone: cancer is driven by coordinated, multi-gene *processes* — signaling pathways, protein complexes, metabolic networks — not single genes in isolation.
+PARP inhibitors (synthetic lethality in DNA damage repair) and immune checkpoint blockade are proof that targeting a process, not a single gene, can work as a therapeutic strategy.
 
 **Our goal is to characterize these gene *process* dependencies directly, and use them to nominate new cancer drug targets.**
-We apply BioBombe — an ensemble of hundreds of dimensionality reduction models (PCA, ICA, NMF, and three VAE variants, each trained at many latent dimensionalities from k=2 to k=200) — to DepMap's CRISPR knockout dependency data for 958 cancer cell lines spanning both pediatric and adult tumors. No single model, or single latent dimensionality, recovers every biologically real gene process on its own; together, the ensemble approaches a far more complete picture than any individual model could. We interpret every latent dimension biologically via gene set enrichment against Reactome pathways and CORUM protein complexes, and correlate it with PRISM drug screen viability data — surfacing both expected biology and cancer type-specific vulnerabilities (TP53-related and mitochondrial dependencies in glioma, for instance) alongside previously unrecognized drug candidates.
+We apply BioBombe — an ensemble of hundreds of dimensionality reduction models (PCA, ICA, NMF, and three VAE variants, each trained at many latent dimensionalities from k=2 to k=200) — to DepMap's CRISPR knockout dependency data for 958 cancer cell lines spanning both pediatric and adult tumors.
+No single model, or single latent dimensionality, recovers every biologically real gene process on its own; together, the ensemble approaches a far more complete picture than any individual model could.
+We interpret every latent dimension biologically via gene set enrichment against Reactome pathways and CORUM protein complexes, and correlate it with PRISM drug screen viability data — surfacing both expected biology and cancer type-specific vulnerabilities (TP53-related and mitochondrial dependencies in glioma, for instance) alongside previously unrecognized drug candidates.
 
-Because most tumors are never profiled with a CRISPR screen, we also built a bridge: models that predict each gene process dependency directly from RNA-seq expression alone. Applied to an external pediatric high-grade glioma RNA-seq dataset, this approach predicted — and we then experimentally validated in the lab — **cladribine** as a candidate therapeutic for killing these cells: a complete path from an unscreened tumor's RNA-seq profile, to a predicted vulnerability, to a validated drug.
+Because most tumors are never profiled with a CRISPR screen, we also built a bridge: models that predict each gene process dependency directly from RNA-seq expression alone.
+Applied to an external pediatric high-grade glioma RNA-seq dataset, this approach predicted — and we then experimentally validated in the lab — **cladribine** as a candidate therapeutic for killing these cells: a complete path from an unscreened tumor's RNA-seq profile, to a predicted vulnerability, to a validated drug.
 
 [8.apply-biobombe-new-data](8.apply-biobombe-new-data/) extends this further still, applying the trained ensemble directly to new, external CRISPR knockout screens rather than bridging from RNA-seq — currently being exercised on an MPNST (peripheral nerve sheath tumor) screen as a worked example.
 
@@ -57,7 +63,8 @@ Each numbered module follows the same convention:
 
 - **Notebooks at the module root** (`N.description.ipynb`) are the primary, interactively-runnable entry points — start here.
 - **`nbconverted/`** holds each notebook's paired script (`.py` or `.r`, via `jupyter nbconvert --to script`), kept in sync with its notebook and runnable headlessly, e.g. without Jupyter.
-- **A handful of steps are too compute-heavy to keep as an executed, paired notebook** (full-ensemble training, full-ensemble GSEA, full-ensemble pinwheel plotting across every sample). These live as plain scripts directly at the module root instead — e.g. [3.run-biobombe/1.train_biobombe_ensemble.py](3.run-biobombe/1.train_biobombe_ensemble.py) — meant to be run directly (often in the background, over many hours), not through Jupyter.
+- **A handful of steps are too compute-heavy to keep as an executed, paired notebook** (full-ensemble training, full-ensemble GSEA, full-ensemble pinwheel plotting across every sample).
+  These live as plain scripts directly at the module root instead — e.g. [3.run-biobombe/1.train_biobombe_ensemble.py](3.run-biobombe/1.train_biobombe_ensemble.py) — meant to be run directly (often in the background, over many hours), not through Jupyter.
 - **`scripts/`**, where it still exists, holds genuine shared helper code with no notebook of its own (e.g. `3.run-biobombe/scripts/model_io_utils.py`).
 - **`utils/`** (module-local, or the shared one at the repository root) holds the tested functions every numbered step in that scope builds on.
 
@@ -66,7 +73,8 @@ Every script and notebook expects to be run with its own module directory as the
 ## Shared utilities and tests
 
 The repository-root [utils/](utils/) holds infrastructure shared across modules 3, 4, 6, and 8: pathway/drug-to-latent-dimension assignment (`latent_annotation.py`), the pinwheel plot itself (`pinwheels.py`), and generic model/data loading helpers (`model_utils.py`, `data_loader.py`).
-It — and [8.apply-biobombe-new-data/utils/](8.apply-biobombe-new-data/utils/), which adds the moderated-t differential testing used there — each keep a plain-assert test suite under their own `tests/` directory (no pytest dependency required). Run any of them directly:
+It — and [8.apply-biobombe-new-data/utils/](8.apply-biobombe-new-data/utils/), which adds the moderated-t differential testing used there — each keep a plain-assert test suite under their own `tests/` directory (no pytest dependency required).
+Run any of them directly:
 
 ```sh
 python utils/tests/test_latent_annotation.py
@@ -81,25 +89,31 @@ A single trained Beta-VAE checkpoint is also available at [2.prototype-VAE-model
 
 ## A visual tour
 
-**958 DepMap cell lines, both pediatric and adult, across dozens of cancer types.** The cohort BioBombe is trained and evaluated on.
+**958 DepMap cell lines, both pediatric and adult, across dozens of cancer types.**
+The cohort BioBombe is trained and evaluated on.
 
 ![Cell line cohort by cancer type, age, and pediatric status](1.data-exploration/figures/cancer_type_age_and_ped_model_distributions.png)
 
-**No single model wins.** Each point is one algorithm's single strongest pathway-enrichment hit at one latent dimensionality, swept from k=2 to k=200. Different algorithms and dimensionalities recover different real biology — PCA/ICA/NMF and three VAE variants all contribute hits the others miss — which is the entire case for running an ensemble instead of picking one "best" model.
+**No single model wins.**
+Each point is one algorithm's single strongest pathway-enrichment hit at one latent dimensionality, swept from k=2 to k=200.
+Different algorithms and dimensionalities recover different real biology — PCA/ICA/NMF and three VAE variants all contribute hits the others miss — which is the entire case for running an ensemble instead of picking one "best" model.
 
 ![Highest GSEA enrichment score across all pathways, by latent dimension, for every algorithm in the ensemble](3.run-biobombe/visualize/latent_plot.png)
 
-**From latent dimension to biology.** Every sample's strongest latent dimensions, annotated with their matching Reactome pathways, CORUM protein complexes, and correlated drugs.
+**From latent dimension to biology.**
+Every sample's strongest latent dimensions, annotated with their matching Reactome pathways, CORUM protein complexes, and correlated drugs.
 
 ![Radar plots of per-sample Reactome pathway, CORUM complex, and drug response associations](4.drug-dependency/visualize/combined_radar_plots.png)
 
-**Validated in the lab.** Gene process dependencies predicted from RNA-seq alone — no CRISPR screen needed — correctly prioritized cladribine as a candidate therapeutic for pediatric high-grade glioma cell lines; predicted drug-sensitivity score vs. measured cell-killing activity, R² = 0.5.
+**Validated in the lab.**
+Gene process dependencies predicted from RNA-seq alone — no CRISPR screen needed — correctly prioritized cladribine as a candidate therapeutic for pediatric high-grade glioma cell lines; predicted drug-sensitivity score vs. measured cell-killing activity, R² = 0.5.
 
 ![Predicted drug latent score vs. measured cell-killing activity for three candidate drugs on pediatric high-grade glioma lines](6.collab-data/visualize/drug_latent_vs_killing.png)
 
 ## Environment setup
 
-This project uses two separate conda environments: `gene_dependency_representations`, for the Python/PyTorch analysis pipeline (every numbered module), and `gene_dependency_figures`, for the R-based figure scripts under a few modules' `nbconverted/` directories. Most contributors only need the first.
+This project uses two separate conda environments: `gene_dependency_representations`, for the Python/PyTorch analysis pipeline (every numbered module), and `gene_dependency_figures`, for the R-based figure scripts under a few modules' `nbconverted/` directories.
+Most contributors only need the first.
 
 ### Step 1: Install mamba
 
