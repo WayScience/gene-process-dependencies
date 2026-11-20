@@ -176,6 +176,9 @@ def assign_unique_latent_dims(df, score_col, target_col, latent_col="z"):
     their single best hit - a pathway/drug with only one surviving
     candidate anywhere in the ensemble is not dropped (see n_candidates
     below), just ranked lower than one several independent hits agree on.
+    Rows with a non-finite score_col (inf/-inf/nan) are excluded from the
+    candidate pool entirely before ranking - see the comment at the
+    score_col filter below.
 
     Parameters:
     - df (pd.DataFrame): DataFrame containing pathways/drugs and their corresponding latent dimensions.
@@ -203,6 +206,18 @@ def assign_unique_latent_dims(df, score_col, target_col, latent_col="z"):
     # hit. "Most important" is highest abs() for GSEA, most negative
     # (smallest raw value) for pearson correlation.
     df = df.copy()
+    # A non-finite score_col (e.g. nes_score == inf, seen in practice for a
+    # handful of CORUM pathways whose observed enrichment exceeds every
+    # permutation in blitzgsea's null - p_value == 0 exactly) is a
+    # computational artifact, not real evidence, but ranks as "best" under
+    # abs()-magnitude ordering - letting it win assignment, then get
+    # dropped later for being non-finite, silently wastes that pathway's
+    # only slot. Excluding it from the candidate pool entirely (not just
+    # from the final winner) lets a pathway with other real finite
+    # candidates still be assigned on its genuine evidence, and correctly
+    # leaves a pathway with zero finite candidates unassigned rather than
+    # pinned to a slot it can never actually keep.
+    df = df[np.isfinite(df[score_col].to_numpy(dtype=float))]
     df["_rank_key"] = df[score_col].abs() if not is_drug else df[score_col]
 
     # Sort so that the most important values are first (highest abs for GSEA, most negative for pearson correlation)

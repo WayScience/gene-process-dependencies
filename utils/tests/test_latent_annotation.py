@@ -142,6 +142,38 @@ def test_assign_unique_latent_dims_drug_priority_strongest_correlation_wins_cont
     assert result.set_index("drug").loc["A", "pearson_correlation"] == -0.9
 
 
+def test_assign_unique_latent_dims_ignores_inf_candidates_for_ranking_and_winner():
+    # P1 has three candidates: two inf (a blitzgsea artifact from a
+    # permutation-beating signal, p_value==0) and one real, finite,
+    # significant hit (-6.0). The inf rows must not win assignment (they'd
+    # later get dropped for being non-finite, wasting the slot) and must
+    # not inflate n_candidates/assignment_score either - only the finite
+    # candidate should count.
+    df = pd.DataFrame([
+        {"pathway": "P1", "nes_score": np.inf, "z": 1, "model": "m", "full_model_z": 10, "init": 0},
+        {"pathway": "P1", "nes_score": -np.inf, "z": 2, "model": "m", "full_model_z": 10, "init": 0},
+        {"pathway": "P1", "nes_score": -6.0, "z": 3, "model": "m", "full_model_z": 10, "init": 0},
+    ])
+    result = assign_unique_latent_dims(df, score_col="nes_score", target_col="pathway").set_index("pathway")
+    assert result.loc["P1", "z"] == 3, f"expected the finite candidate's slot (z=3), got z={result.loc['P1', 'z']}"
+    assert result.loc["P1", "nes_score"] == -6.0
+    assert result.loc["P1", "n_candidates"] == 1, "the two inf rows must not count toward n_candidates"
+    assert np.isclose(result.loc["P1", "assignment_score"], 6.0)
+
+
+def test_assign_unique_latent_dims_all_inf_candidates_drops_pathway_entirely():
+    # P1's only candidates are inf - no real evidence survives, so it must
+    # not appear in the result at all (not assigned to a slot it can
+    # never actually keep after downstream inf-filtering).
+    df = pd.DataFrame([
+        {"pathway": "P1", "nes_score": np.inf, "z": 1, "model": "m", "full_model_z": 10, "init": 0},
+        {"pathway": "P1", "nes_score": np.inf, "z": 2, "model": "m", "full_model_z": 10, "init": 0},
+    ])
+    result = assign_unique_latent_dims(df, score_col="nes_score", target_col="pathway")
+    assert result.empty
+    assert "P1" not in set(result["pathway"])
+
+
 def test_assign_unique_latent_dims_empty_result_preserves_schema():
     # When nothing survives to be assigned (e.g. every candidate was
     # filtered out upstream), the result must still carry the input's
