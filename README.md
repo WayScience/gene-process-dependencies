@@ -4,7 +4,7 @@
 
 ![Overview of the BioBombe framework: six machine learning algorithms applied across many latent dimensionalities to DepMap gene dependency data, evaluated for reconstruction, gene set coverage, and stability, then interpreted via GSEA against Reactome pathways and CORUM complexes, and correlated with PRISM drug screen data to nominate drug candidates](figure1_overview.jpg)
 
-> **Published in BMC Genomics.** Curd JB, Balagopal NK, Green AL, Way GP. "Characterizing the landscape of gene process dependencies in cancer." *BMC Genomics* (2026). See [CITATION.cff](CITATION.cff) for the full, exact citation.
+> **Published in BMC Genomics.** Curd, J.B., Balagopal, N.K., Green, A.L. et al. "Characterizing the landscape of gene process dependencies in cancer." *BMC Genomics* (2026). [https://doi.org/10.1186/s12864-026-13457-5](https://doi.org/10.1186/s12864-026-13457-5). See [CITATION.cff](CITATION.cff) for the full, exact citation.
 
 A **gene process dependency** is a group of genes in the same biological process, pathway, or protein complex that a cancer cell depends on together for survival, rather than any one gene on its own.
 The figure above shows how this project finds them: many dimensionality-reduction models compress DepMap's CRISPR gene-dependency data into a shared "latent" representation, and each resulting dimension gets matched back to a real Reactome pathway or CORUM protein complex (panel C), and separately correlated with drug sensitivity data to nominate drug candidates.
