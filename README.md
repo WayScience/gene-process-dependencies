@@ -15,16 +15,16 @@
 
 ## Goal
 
-Current cancer treatments tend to be toxic and leave patients with lifelong side effects.
-The future of drug development is based on synthetic lethality, where the combination of two genetic events results in cell death.
-The first molecular targeted therapeutic exploiting a synthetic lethal exposed by an inactivated tumor suppressor gene (BRCA1/2) received FDA approval in 2016, a PARP inhibitor.
-Synthetic lethality-based treatments work against a majority of cancer mutations, are easier to match to responding patients, and are less toxic than traditional chemotherapy.
+Precision oncology tries to match a drug to a tumor's genetics, but today that benefits fewer than 10% of cancer patients — in large part because it searches for single-gene drug targets, and only about 15% of human proteins are even considered druggable. The Cancer Dependency Map (DepMap) expanded that search by mapping which single genes cancer cells depend on for survival, across hundreds of cell lines and dozens of cancer types. But a gene rarely acts alone: cancer is driven by coordinated, multi-gene *processes* — signaling pathways, protein complexes, metabolic networks — not single genes in isolation. PARP inhibitors (synthetic lethality in DNA damage repair) and immune checkpoint blockade are proof that targeting a process, not a single gene, can work as a therapeutic strategy.
 
-**The goal of this project is to discover multivariate gene vulnerability patterns in cancer.**
-We use cancer cell line data from DepMap to find multivariate gene vulnerability patterns that can inform the development of novel cancer treatments.
-We apply an ensemble of dimensionality reduction methods — PCA, ICA, NMF, and several VAE variants — to gene knockout data to discover multivariate gene vulnerabilities across many latent resolutions.
-This ensemble approach is known as BioBombe.
-We interpret the resulting latent dimensions against curated gene sets (CORUM, Reactome) and drug screen data, compare representations between pediatric and adult cancers, and test whether they transfer to data with no matched CRISPR screen — RNA-seq-only collaborator samples, and new gene-dependency screens run through the same ensemble directly.
+**Our goal is to characterize these gene *process* dependencies directly, and use them to nominate new cancer drug targets.**
+We apply BioBombe — an ensemble of hundreds of dimensionality reduction models (PCA, ICA, NMF, and three VAE variants, each trained at many latent dimensionalities from k=2 to k=200) — to DepMap's CRISPR knockout dependency data for 958 cancer cell lines spanning both pediatric and adult tumors. No single model, or single latent dimensionality, recovers every biologically real gene process on its own; together, the ensemble approaches a far more complete picture than any individual model could. We interpret every latent dimension biologically via gene set enrichment against Reactome pathways and CORUM protein complexes, and correlate it with PRISM drug screen viability data — surfacing both expected biology and cancer type-specific vulnerabilities (TP53-related and mitochondrial dependencies in glioma, for instance) alongside previously unrecognized drug candidates.
+
+Because most tumors are never profiled with a CRISPR screen, we also built a bridge: models that predict each gene process dependency directly from RNA-seq expression alone. Applied to an external pediatric high-grade glioma RNA-seq dataset, this approach predicted — and we then experimentally validated in the lab — **cladribine** as a candidate therapeutic for killing these cells: a complete path from an unscreened tumor's RNA-seq profile, to a predicted vulnerability, to a validated drug.
+
+[8.apply-biobombe-new-data](8.apply-biobombe-new-data/) extends this further still, applying the trained ensemble directly to new, external CRISPR knockout screens rather than bridging from RNA-seq — currently being exercised on an MPNST (peripheral nerve sheath tumor) screen as a worked example.
+
+This repository implements the pipeline behind Curd, Balagopal, Green, and Way, *"[Characterizing the landscape of gene process dependencies in cancer](https://doi.org/10.1101/2025.11.14.688518)"* (bioRxiv, 2025).
 
 ## Data
 
@@ -81,25 +81,21 @@ A single trained Beta-VAE checkpoint is also available at [2.prototype-VAE-model
 
 ## A visual tour
 
-**Cell line cohort.** DepMap cell lines span many cancer types, ages, and pediatric or adult status.
+**958 DepMap cell lines, both pediatric and adult, across dozens of cancer types.** The cohort BioBombe is trained and evaluated on.
 
 ![Cell line cohort by cancer type, age, and pediatric status](1.data-exploration/figures/cancer_type_age_and_ped_model_distributions.png)
 
-**Learned latent space.** The trained Beta-VAE embeds cell lines using their gene knockout dependency scores.
-
-![Clustered heatmap of the Beta-VAE latent space](1.data-exploration/figures/heatmap.png)
-
-**Ensemble consistency.** Each point is one model's single strongest pathway enrichment at that latent dimensionality; across the full 2–200 dimension sweep, every algorithm in the ensemble (PCA, ICA, NMF, and three VAE variants) converges toward comparably strong best-pathway hits as dimensionality grows.
+**No single model wins.** Each point is one algorithm's single strongest pathway-enrichment hit at one latent dimensionality, swept from k=2 to k=200. Different algorithms and dimensionalities recover different real biology — PCA/ICA/NMF and three VAE variants all contribute hits the others miss — which is the entire case for running an ensemble instead of picking one "best" model.
 
 ![Highest GSEA enrichment score across all pathways, by latent dimension, for every algorithm in the ensemble](3.run-biobombe/visualize/latent_plot.png)
 
-**Per-sample interpretation.** Each sample's strongest latent dimensions are annotated with their matching Reactome pathways, CORUM complexes, and correlated drugs — a pinwheel/radar view of what distinguishes one sample's learned representation from another's.
+**From latent dimension to biology.** Every sample's strongest latent dimensions, annotated with their matching Reactome pathways, CORUM protein complexes, and correlated drugs.
 
 ![Radar plots of per-sample Reactome pathway, CORUM complex, and drug response associations](4.drug-dependency/visualize/combined_radar_plots.png)
 
-**Bridging to samples with no CRISPR screen.** Vulnerabilities predicted from RNA-seq alone, via the bridge trained in [5.RNAseq](5.RNAseq/), correlate with cell killing actually observed in real collaborator samples.
+**Validated in the lab.** Gene process dependencies predicted from RNA-seq alone — no CRISPR screen needed — correctly prioritized cladribine as a candidate therapeutic for pediatric high-grade glioma cell lines; predicted drug-sensitivity score vs. measured cell-killing activity, R² = 0.5.
 
-![Predicted latent vulnerability vs. observed drug-induced cell killing](6.collab-data/visualize/drug_latent_vs_killing.png)
+![Predicted drug latent score vs. measured cell-killing activity for three candidate drugs on pediatric high-grade glioma lines](6.collab-data/visualize/drug_latent_vs_killing.png)
 
 ## Environment setup
 
