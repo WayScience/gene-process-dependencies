@@ -22,9 +22,14 @@ preferred-citation:
   authors:
     - given-names: "Julia B."
       family-names: Curd
+    - given-names: "Navin Kumar"
+      family-names: Balagopal
+    - given-names: "Adam L."
+      family-names: Green
     - given-names: "Gregory P."
       family-names: Way
-  year: 2025
-  journal: bioRxiv
-  doi: "10.1101/2025.11.14.688518"
-  url: "https://www.biorxiv.org/content/10.1101/2025.11.14.688518v1"
+  year: 2026
+  month: 10
+  journal: "BMC Genomics"
+  doi: "10.1186/s12864-026-13457-5"
+  url: "https://doi.org/10.1186/s12864-026-13457-5"
