@@ -59,7 +59,7 @@ All DepMap and PRISM data are publicly available.
 - Cancer dependency data: [Cancer Dependency Map resource](https://depmap.org/portal/download/) (pinned to the 24Q2 release; see [0.data-download](0.data-download/)).
 - Drug response data: the [PRISM Repurposing screen](https://depmap.org/repurposing/), also hosted on DepMap.
 - The pretrained, 486-model BioBombe ensemble is hosted on [Figshare](https://figshare.com/articles/dataset/Gene_Process_Dependencies_-_BioBombe_Models/33437659) rather than checked into version control (~1.2 GB); see [0.data-download/3.download-saved-biobombe-models-from-figshare.ipynb](0.data-download/3.download-saved-biobombe-models-from-figshare.ipynb).
-- RNA-seq data without a matched CRISPR screen comes from two sources: DepMap's own RNA-seq profiles ([5.RNAseq](5.RNAseq/)), and bulk RNA-seq from pediatric tumors shared by a project collaborator, Dr. Adam Green, via [NCBI GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE231858) ([6.collab-data](6.collab-data/)).
+- RNA-seq data: DepMap's own RNA-seq profiles, matched to the same CRISPR-screened cell lines used everywhere else in this project, train the RNA-seq-to-latent-dimension bridge ([5.RNAseq](5.RNAseq/)); bulk RNA-seq from pediatric tumors shared by a project collaborator, Dr. Adam Green, via [NCBI GEO](https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE231858), has no matched CRISPR screen at all, which is what that bridge is actually applied to ([6.collab-data](6.collab-data/)).
 
 ## Repository structure
 
@@ -72,8 +72,8 @@ This repository is a numbered pipeline, meant to be run in order.
 | [2.prototype-VAE-models](2.prototype-VAE-models/) | Train and validate a single Beta-VAE / Beta-TC-VAE | Optimize hyperparameters, train one representative Beta-VAE and Beta-TC-VAE alongside PCA/ICA/NMF baselines, then check every model with heatmaps, GSEA, and t-tests |
 | [3.run-biobombe](3.run-biobombe/) | Train and validate the full BioBombe ensemble | Sweep PCA, ICA, NMF, VanillaVAE, BetaVAE, and BetaTCVAE across many latent dimensions, run GSEA against CORUM and Reactome on each, then check ensemble consistency with CKA and reconstruction quality |
 | [4.drug-dependency](4.drug-dependency/) | Correlate with drug response | Correlate latent dimensions with PRISM drug screen viability data, then visualize the strongest per-sample hits with spider and pinwheel plots |
-| [5.RNAseq](5.RNAseq/) | Bridge to RNA-seq | Train models that predict each latent dimension from RNA-seq expression, for samples without a CRISPR screen |
-| [6.collab-data](6.collab-data/) | Apply to external data | Apply the RNA-seq bridge to real collaborator samples and compare predicted vulnerabilities to observed cell killing |
+| [5.RNAseq](5.RNAseq/) | Bridge to RNA-seq | Train models that predict each latent dimension from RNA-seq expression, using DepMap cell lines that have both |
+| [6.collab-data](6.collab-data/) | Apply to external data | Apply the RNA-seq bridge to real collaborator samples with no CRISPR screen, and compare predicted vulnerabilities to observed cell killing |
 | [7.shiny-app](7.shiny-app/) | Prepare visualization data | Build the PCA projections used by the project's Shiny app |
 | [8.apply-biobombe-new-data](8.apply-biobombe-new-data/) | Apply BioBombe to new data | Align a new gene-dependency dataset to the trained ensemble's genes, sanity-check its distribution against DepMap, apply every saved model, annotate the resulting latent scores with CORUM/Reactome pathways and drug correlations, and test for differences by sample group |
 
