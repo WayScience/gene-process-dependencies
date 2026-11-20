@@ -211,6 +211,21 @@ def derive_comparisons(metadata_df):
     return comparisons
 
 
+def empty_differential_result(d0_values=(2, 4)):
+    """
+    A zero-row frame with exactly differential_test()'s output columns,
+    for a caller that has no scores_df to test at all (e.g. no drug
+    correlation input for this run) - letting it skip the call entirely
+    rather than pass pivot_score_matrix a columnless DataFrame, which
+    raises KeyError on `df["ModelID"]` instead of producing an empty
+    result.
+    """
+    columns = ["stratum", "marker", "feature", "n_pos", "n_neg", "mean_pos", "mean_neg", "mean_diff"]
+    for d0 in d0_values:
+        columns += [f"t_d0_{d0}", f"p_d0_{d0}", f"q_d0_{d0}", f"df_d0_{d0}"]
+    return pd.DataFrame(columns=columns)
+
+
 def differential_test(scores_df, id_col, score_col, comparisons, replicate_groups, d0_values=(2, 4)):
     """
     Runs the moderated t-test for every comparison against one feature

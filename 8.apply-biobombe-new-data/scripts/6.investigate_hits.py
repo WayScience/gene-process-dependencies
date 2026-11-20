@@ -43,7 +43,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 sys.path.insert(0, "utils")
 from pinwheel_overlay import plot_overlay_pinwheel, top_feature_union
 from qq_plot import qq_plot_pvalues
-from stats import collect_replicate_groups, derive_comparisons, differential_test
+from stats import collect_replicate_groups, derive_comparisons, differential_test, empty_differential_result
 
 
 # In[ ]:
@@ -204,12 +204,17 @@ for (stratum, marker), group in differential_pathways_df.groupby(["stratum", "ma
 # In[ ]:
 
 
-# all_drugs_df is empty but schema-correct when has_drugs is False;
-# differential_test handles an empty scores_df fine (every intermediate
-# array is just zero-length) and returns a correctly-columned, zero-row
-# frame - write that instead of leaving a prior run's differential report
-# on disk looking current.
-differential_drugs_df = differential_test(all_drugs_df, "name", "pathway_score", comparisons, replicate_groups)
+# all_drugs_df can be a genuinely columnless DataFrame when has_drugs is
+# False (no drug-correlation input at all, or an all_drugs_path that
+# doesn't exist yet) - pivot_score_matrix indexes df["ModelID"], which
+# raises KeyError on a columnless frame, so differential_test is only
+# called when there's real drug data; otherwise write a schema-correct,
+# zero-row result instead of leaving a prior run's differential report on
+# disk looking current.
+if has_drugs:
+    differential_drugs_df = differential_test(all_drugs_df, "name", "pathway_score", comparisons, replicate_groups)
+else:
+    differential_drugs_df = empty_differential_result()
 differential_drugs_df.to_parquet(results_dir / "NF1_data_differential_drugs_by_mutation_status.parquet", index=False)
 if has_drugs:
     print(f"Differential drug results: {differential_drugs_df.shape}")

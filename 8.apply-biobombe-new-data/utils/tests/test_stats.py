@@ -18,6 +18,7 @@ from stats import (
     collect_replicate_groups,
     derive_comparisons,
     differential_test,
+    empty_differential_result,
     fit_shared_prior,
     moderated_t_test,
     pivot_score_matrix,
@@ -261,6 +262,21 @@ def test_differential_test_matches_moderated_t_test_directly():
     assert np.allclose(result_df["p_d0_4"], expected_p)
     assert np.allclose(result_df["df_d0_4"], expected_df)
     assert np.allclose(result_df["mean_diff"], pos_values.mean(axis=1) - neg_values.mean(axis=1))
+
+
+def test_empty_differential_result_matches_differential_test_columns():
+    scores_df = pd.DataFrame({
+        "ModelID": ["a", "b", "c", "d"],
+        "name": ["drug1"] * 4,
+        "pathway_score": [1.0, 2.0, 3.0, 4.0],
+    })
+    comparisons = [{"stratum": "s", "marker": "m", "pos_ids": ["a", "b"], "neg_ids": ["c", "d"]}]
+    replicate_groups = [["a", "b"], ["c", "d"]]
+    real_result = differential_test(scores_df, "name", "pathway_score", comparisons, replicate_groups)
+
+    empty_result = empty_differential_result()
+    assert list(empty_result.columns) == list(real_result.columns)
+    assert len(empty_result) == 0
 
 
 def run_all():
