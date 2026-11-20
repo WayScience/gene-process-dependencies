@@ -92,6 +92,10 @@ def perform_gsea(weights_df: pd.DataFrame, model_name: str, num_components: int,
     random.seed(0)
     seed = random.random()
     gsea_results = []
+    result_columns = [
+        "z", "full_model_z", "init", "modelseed", "model",
+        "reactome_pathway", "gsea_es_score", "nes_score", "p_value", "shuffled",
+    ]
     for col in weights_df.columns[1:]:  # Skip 'genes' column
         gene_signature = weights_df[['genes', col]]
         if gene_signature.shape[0] > 0:
@@ -138,7 +142,13 @@ def perform_gsea(weights_df: pd.DataFrame, model_name: str, num_components: int,
                 # just this one column/model combination instead.
                 print(f"Skipping GSEA for {model_name} init {init} dim {col} due to {type(e).__name__}: {e}")
 
-    gsea_results_df = pd.DataFrame(gsea_results)
+    # Explicit columns even when gsea_results is empty (every column for
+    # this model either had a degenerate signature or produced zero rows):
+    # a columnless DataFrame here would still concat fine against a
+    # non-empty combined_results_df, but if every model in a fresh run hit
+    # this, the final parquet would be saved with no columns at all, and
+    # the annotation script's gsea_df["shuffled"] would then raise KeyError.
+    gsea_results_df = pd.DataFrame(gsea_results, columns=result_columns)
     return gsea_results_df
 
 # Define the location of the saved models and output directory for GSEA results
