@@ -9,8 +9,8 @@
 # `assign_unique_latent_dims` / `filter_significant_candidates` /
 # `flag_shared_latent_slots` — the shared pathway/drug-to-latent
 # assignment core (split out of `utils/pinwheels.py`, which now holds
-# only its plotting function). `4.drug-dependency/scripts/7.pinwheel_plots.py`
-# and `6.collab-data/scripts/3.pinwheel_plots.py` nominally use the same
+# only its plotting function). `4.drug-dependency/7.pinwheel_plots.py`
+# and `6.collab-data/3.pinwheel_plots.py` nominally use the same
 # functions but are both currently broken for unrelated, pre-existing
 # reasons (checked directly - not touched here).
 #
@@ -67,7 +67,7 @@ print(f"Sample metadata columns to exclude from latent melting: {metadata_cols}"
 # ### Pathway annotation: CORUM and Reactome, kept separate
 #
 # Both raw, per-latent-dimension GSEA hit tables are produced by
-# `3.run-biobombe/scripts/2.interpret_biobombe_with_gsea.py`'s
+# `3.run-biobombe/2.interpret_biobombe_with_gsea.py`'s
 # `GSEA_LIBRARIES` loop: CORUM at its original, unsuffixed
 # `combined_z_matrix_gsea_results.parquet` (unchanged, for backward
 # compatibility with every existing consumer of that path), Reactome
@@ -122,7 +122,7 @@ for library, gsea_path in gsea_sources.items():
 # ### Drug annotation
 #
 # This step needs `4.drug-dependency/results/combined_latent_drug_correlations.parquet`,
-# the ensemble-wide drug correlation table `4.drug-dependency/scripts/5.drug_latent_dim_correlation.py`
+# the ensemble-wide drug correlation table `4.drug-dependency/nbconverted/5.drug_latent_dim_correlation.py`
 # produces. That script depends on `saved_models/`, which only exists locally
 # now — if it hasn't been run yet, drug annotation is skipped here rather than failing.
 # Computed here, before scoring either family, so `flag_shared_latent_slots`
@@ -146,7 +146,7 @@ else:
     drug_max = None
     print(
         f"{drug_correlation_path} not found — skipping drug annotation. "
-        "Run 4.drug-dependency/scripts/5.drug_latent_dim_correlation.py first to enable it."
+        "Run 4.drug-dependency/nbconverted/5.drug_latent_dim_correlation.py first to enable it."
     )
 
 

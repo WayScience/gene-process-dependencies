@@ -346,7 +346,7 @@ def fit_and_persist_scaler(train_test_data_directory, trained_gene_order, output
 
     This must be fit on the exact data the ensemble was trained on: the
     670-model train split (1.data-exploration/data/VAE_train_df.parquet), not
-    DepMap's full ~1150-model cohort. 3.run-biobombe/scripts/1.train_biobombe_ensemble.py
+    DepMap's full ~1150-model cohort. 3.run-biobombe/1.train_biobombe_ensemble.py
     fits its zero_one_normalize=True MinMaxScaler on that same train split and
     applies it to every model type uniformly (PCA, ICA, NMF, and every VAE
     variant) — there's no per-model-type normalization, and no z-scoring
