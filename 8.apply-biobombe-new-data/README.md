@@ -55,8 +55,8 @@ Building this surfaced a real bug in `vvae_extract_latent_dimensions` (`2.protot
 
 ### `5.annotate_latent_scores`
 
-Links each new sample's latent scores to the GSEA pathway results (`3.run-biobombe/gsea_results/`) for the corresponding model and latent dimension, via `utils/pinwheels.py`'s `assign_unique_latent_dims` / `compute_and_plot_latent_scores` — the same functions `6.collab-data/scripts/3.pinwheel_plots.py` uses for collaborator data.
-Drug annotation follows the same pattern against `4.drug-dependency/results/combined_latent_drug_correlations.parquet` when that file exists; it's produced by `4.drug-dependency/scripts/5.drug_latent_dim_correlation.py`, which only became runnable once the BioBombe ensemble was downloaded, so this step skips drug annotation with a clear message rather than failing if it hasn't been generated yet.
+Links each new sample's latent scores to the GSEA pathway results (`3.run-biobombe/gsea_results/`) for the corresponding model and latent dimension, via `utils/latent_annotation.py`'s `assign_unique_latent_dims` / `compute_and_plot_latent_scores` — the same functions `6.collab-data/3.pinwheel_plots.py` uses for collaborator data.
+Drug annotation follows the same pattern against `4.drug-dependency/results/combined_latent_drug_correlations.parquet` when that file exists; it's produced by `4.drug-dependency/nbconverted/5.drug_latent_dim_correlation.py`, which only became runnable once the BioBombe ensemble was downloaded, so this step skips drug annotation with a clear message rather than failing if it hasn't been generated yet.
 Produces a per-sample ranked table of top associated pathways (and drugs, when available) in the dataset's results directory. It calls `compute_and_plot_latent_scores` with `make_plot=False` throughout, so despite `visualize/pinwheels/` existing as a gitignored path below, no pinwheel plot is actually generated yet — turning plotting on for each sample is still open.
 
 ## Data

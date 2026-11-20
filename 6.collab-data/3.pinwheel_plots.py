@@ -10,7 +10,7 @@ import sys
 from sklearn.preprocessing import MinMaxScaler
 
 sys.path.insert(0, "../utils/")
-from pinwheels import compute_and_plot_latent_scores, extract_top_pathways_with_cancer, plot_stacked_bar_chart
+from latent_annotation import compute_and_plot_latent_scores
 
 sys.path.append("../4.drug-dependency")
 from utils import load_utils

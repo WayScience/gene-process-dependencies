@@ -76,7 +76,7 @@ print(f"Verified against {pca_models[0].name}: {pca_model.n_features_in_} genes"
 
 
 # Split each "SYMBOL (ENTREZID)" column name into its own entrez_id and
-# symbol_id, the same convention 0.data-download/scripts/2.construct_gene_dictionary.py
+# symbol_id, the same convention 0.data-download/nbconverted/2.construct_gene_dictionary.py
 # uses for CRISPR_gene_dictionary.parquet. Storing all three columns here
 # means consumers can look up entrez_id/symbol_id directly instead of
 # re-parsing dependency_column strings themselves.
