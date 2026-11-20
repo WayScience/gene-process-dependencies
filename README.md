@@ -1,6 +1,5 @@
 # Gene Dependency Representations
 
-![License: BSD 3-Clause](https://img.shields.io/badge/license-BSD--3--Clause-blue.svg)
 ![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
 
 ## Contents
@@ -13,7 +12,6 @@
 - [Status](#status)
 - [A visual tour](#a-visual-tour)
 - [Environment setup](#environment-setup)
-- [License](#license)
 
 ## Goal
 
@@ -91,9 +89,13 @@ A single trained Beta-VAE checkpoint is also available at [2.prototype-VAE-model
 
 ![Clustered heatmap of the Beta-VAE latent space](1.data-exploration/figures/heatmap.png)
 
-**Drug response correlation.** Latent dimensions are correlated with PRISM drug screen viability to nominate candidate vulnerabilities.
+**Ensemble consistency.** Each point is one model's single strongest pathway enrichment at that latent dimensionality; across the full 2–200 dimension sweep, every algorithm in the ensemble (PCA, ICA, NMF, and three VAE variants) converges toward comparably strong best-pathway hits as dimensionality grows.
 
-![Volcano plot of latent dimension to drug correlations](4.drug-dependency/visualize/drug_volcano_plot.png)
+![Highest GSEA enrichment score across all pathways, by latent dimension, for every algorithm in the ensemble](3.run-biobombe/visualize/latent_plot.png)
+
+**Per-sample interpretation.** Each sample's strongest latent dimensions are annotated with their matching Reactome pathways, CORUM complexes, and correlated drugs — a pinwheel/radar view of what distinguishes one sample's learned representation from another's.
+
+![Radar plots of per-sample Reactome pathway, CORUM complex, and drug response associations](4.drug-dependency/visualize/combined_radar_plots.png)
 
 **Bridging to samples with no CRISPR screen.** Vulnerabilities predicted from RNA-seq alone, via the bridge trained in [5.RNAseq](5.RNAseq/), correlate with cell killing actually observed in real collaborator samples.
 
@@ -128,7 +130,3 @@ Plain `conda env create` also works for either, if you'd rather skip mamba, just
 conda activate gene_dependency_representations   # for everything except the R figure scripts
 conda activate gene_dependency_figures            # for the .r scripts specifically
 ```
-
-## License
-
-Distributed under the BSD 3-Clause License — see [LICENSE.md](LICENSE.md) for the full text.
