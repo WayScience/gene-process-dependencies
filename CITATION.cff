@@ -22,9 +22,16 @@ preferred-citation:
   authors:
     - given-names: "Julia B."
       family-names: Curd
+    - given-names: "Navin Kumar"
+      family-names: Balagopal
+    - given-names: "Adam L."
+      family-names: Green
     - given-names: "Gregory P."
       family-names: Way
-  year: 2025
-  journal: bioRxiv
+  year: 2026
+  journal: "BMC Genomics"
+  # TODO: replace with the published article's real DOI, volume, issue, and
+  # page/article-number once confirmed (placeholder below is the bioRxiv
+  # preprint, kept so this file stays valid until the real values land).
   doi: "10.1101/2025.11.14.688518"
-  url: "https://www.biorxiv.org/content/10.1101/2025.11.14.688518v1"
+  url: "https://www.biorxiv.org/content/10.1101/2025.11.14.688518v2"
