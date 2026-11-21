@@ -1,12 +1,11 @@
 # Gene Dependency Representations
 
-![Python 3.10+](https://img.shields.io/badge/python-3.10%2B-blue.svg)
-
 ![Overview of the BioBombe framework: six machine learning algorithms applied across many latent dimensionalities to DepMap gene dependency data, evaluated for reconstruction, gene set coverage, and stability, then interpreted via GSEA against Reactome pathways and CORUM complexes, and correlated with PRISM drug screen data to nominate drug candidates](figure1_overview.jpg)
 
-> **Published in BMC Genomics.** Curd, J.B., Balagopal, N.K., Green, A.L. et al. "Characterizing the landscape of gene process dependencies in cancer." *BMC Genomics* (2026). [https://doi.org/10.1186/s12864-026-13457-5](https://doi.org/10.1186/s12864-026-13457-5). See [CITATION.cff](CITATION.cff) for the full, exact citation.
+> Curd, J.B., Balagopal, N.K., Green, A.L. Way, G.P. "Characterizing the landscape of gene process dependencies in cancer." *BMC Genomics* (2026). [https://doi.org/10.1186/s12864-026-13457-5](https://doi.org/10.1186/s12864-026-13457-5).
 
-A **gene process dependency** is a group of genes in the same biological process, pathway, or protein complex that a cancer cell depends on together for survival, rather than any one gene on its own.
+We define a **gene process dependency** as a group of genes in the same biological process, pathway, or protein complex that a cancer cell depends on together for survival.
+
 The figure above shows how this project finds them: many dimensionality-reduction models compress DepMap's CRISPR gene-dependency data into a shared "latent" representation, and each resulting dimension gets matched back to a real Reactome pathway or CORUM protein complex (panel C), and separately correlated with drug sensitivity data to nominate drug candidates.
 
 ## Goal
@@ -17,13 +16,13 @@ The Cancer Dependency Map (DepMap) expanded that search by mapping which single 
 But a gene rarely acts alone: cancer is driven by coordinated, multi-gene *processes* (signaling pathways, protein complexes, metabolic networks), not single genes in isolation.
 PARP inhibitors (synthetic lethality in DNA damage repair) and immune checkpoint blockade are proof that targeting a process, not a single gene, can work as a therapeutic strategy.
 
-**Our goal is to characterize these gene process dependencies directly, and use them to nominate new cancer drug targets.**
+**Our goal is to characterize the landscape of gene process dependencies directly, and use them to nominate new cancer drug targets.**
 We apply BioBombe, an ensemble of hundreds of dimensionality reduction models (PCA, ICA, NMF, and three VAE variants, each trained at many latent dimensionalities from k=2 to k=200), to DepMap's CRISPR knockout dependency data for 958 cancer cell lines spanning both pediatric and adult tumors.
-No single model, or single latent dimensionality, recovers every biologically real gene process on its own; together, the ensemble approaches a far more complete picture than any individual model could.
+No single model, or single latent dimensionality, recovers every gene process dependency on its own; together, the ensemble approaches a far more complete picture than any individual model could.
 We interpret every latent dimension biologically via gene set enrichment against Reactome pathways and CORUM protein complexes, and correlate it with PRISM drug screen viability data, surfacing both expected biology and cancer type-specific vulnerabilities (TP53-related and mitochondrial dependencies in glioma, for instance) alongside previously unrecognized drug candidates.
 
-Because most tumors are never profiled with a CRISPR screen, we also built a bridge: models that predict each gene process dependency directly from RNA-seq expression alone.
-Applied to an external pediatric high-grade glioma RNA-seq dataset, this approach predicted, and we then experimentally validated in the lab, that **cladribine** is a candidate therapeutic for killing these cells: a complete path from an unscreened tumor's RNA-seq profile, to a predicted vulnerability, to a validated drug.
+Because most tumors are never profiled with a CRISPR screen, we also built a bridge: models that predict each gene process dependency directly from RNA-seq data.
+Applied to an external pediatric high-grade glioma (pHGG) RNA-seq dataset, this approach predicted, and we then experimentally validated in the lab, that **cladribine** is a candidate therapeutic for killing these cells: a complete path from an unscreened tumor's RNA-seq profile, to a predicted vulnerability, to a validated drug.
 
 ## A visual tour
 
@@ -48,7 +47,7 @@ This plot shows that match for three cancer samples at once: which Reactome path
 
 **Why this matters: a prediction that held up in the lab.**
 Starting only from a tumor's RNA-seq profile, with no CRISPR screen at all, this approach predicted that pediatric high-grade glioma cells would be vulnerable to the drug cladribine.
-We then tested that prediction directly on real glioma cells, and it held up: R² = 0.5 between predicted drug sensitivity and measured cell killing, the strongest result of three drugs tested.
+We then tested that prediction directly on real glioma cells, and it worked reasonably well.
 This is the project's proof of concept, a computational prediction, made from cheap and widely available data, that pointed to a real, working cancer drug candidate.
 
 ![Predicted drug latent score vs. measured cell-killing activity for three candidate drugs on pediatric high-grade glioma lines](6.collab-data/visualize/drug_latent_vs_killing.png)
